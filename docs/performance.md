@@ -61,6 +61,47 @@ cardinality is 719 MiB/s rather than the 413 MiB/s high-cardinality result.
 The non-monotonic middle values should not be over-interpreted on this shared
 host.
 
+## Categorical fast path
+
+The same 100,000-row workload was run with string and categorical inputs after
+adding direct physical-ID dispatch. Seven warm repetitions were used. MiB/s is
+normalized to the original logical UTF-8 bytes for both representations.
+
+| Cardinality | Threads | String MiB/s | Categorical MiB/s | Speedup |
+|---:|---:|---:|---:|---:|
+| 0.01% | 1 | 253 | 3,106 | 12.3x |
+| 0.01% | 4 | 627 | 2,897 | 4.6x |
+| 0.1% | 1 | 161 | 2,671 | 16.6x |
+| 0.1% | 4 | 455 | 2,722 | 6.0x |
+| 1% | 1 | 174 | 1,753 | 10.1x |
+| 1% | 4 | 393 | 1,464 | 3.7x |
+| 10% | 1 | 157 | 545 | 3.5x |
+| 10% | 4 | 441 | 926 | 2.1x |
+| 50% | 1 | 173 | 175 | 1.0x |
+| 50% | 4 | 447 | 264 | 0.6x |
+| 100% | 1 | 173 | 105 | 0.6x |
+| 100% | 4 | 431 | 205 | 0.5x |
+
+The fast path is compelling through 10% cardinality and reaches about 3 GiB/s
+for extreme repetition. Nearly unique categorical input is slower than raw
+strings because it gains no tokenization reuse while paying mapping and gather
+costs; it remains supported without expanding the column to strings. Users
+should not cast nearly unique strings to categorical solely for token counting.
+
+The categorical comparison used `--skip-reference` to keep the matrix focused
+on plugin timing. Separate categorical, enum, wide-ID, arbitrary-Unicode, and
+string tests enforce exact reference parity.
+
+Reproduce the comparison with:
+
+```bash
+uv run --no-sync python -m benchmarks.matrix \
+  --rows 100000 --lengths short \
+  --cardinalities 0.0001,0.001,0.01,0.1,0.5,1.0 \
+  --contents mixed --dtypes string,categorical \
+  --threads 1,4 --warm-repeats 7 --skip-reference
+```
+
 Reproduce the sweep with:
 
 ```bash

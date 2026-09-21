@@ -1,5 +1,7 @@
 //! Native count-only token expressions for Polars.
 
+use std::collections::HashMap;
+
 use polars::prelude::*;
 use pyo3_polars::PolarsAllocator;
 use pyo3_polars::derive::{CallerContext, polars_expr};
@@ -14,6 +16,8 @@ static ALLOCATOR: PolarsAllocator = PolarsAllocator::new();
 const O200K_BASE: &str = "o200k_base";
 const PARALLEL_MIN_BYTES: usize = 512 * 1024;
 const TASKS_PER_THREAD: usize = 4;
+const CATEGORICAL_PARALLEL_MIN_CATEGORIES: usize = 4_096;
+const CATEGORICAL_DENSE_RATIO: usize = 4;
 
 #[derive(Deserialize)]
 struct CountKwargs {
@@ -37,6 +41,12 @@ pub fn count_o200k(text: &str) -> usize {
         .count(text)
 }
 
+fn checked_count_o200k(text: &str) -> PolarsResult<u32> {
+    u32::try_from(count_o200k(text)).map_err(|_| {
+        PolarsError::ComputeError("token count exceeds the UInt32 output range".into())
+    })
+}
+
 fn count_chunk(strings: &StringChunked) -> PolarsResult<UInt32Chunked> {
     let mut output =
         PrimitiveChunkedBuilder::<UInt32Type>::new(strings.name().clone(), strings.len());
@@ -47,15 +57,174 @@ fn count_chunk(strings: &StringChunked) -> PolarsResult<UInt32Chunked> {
         match value {
             None => output.append_null(),
             Some(text) => {
-                let count = u32::try_from(count_o200k(text)).map_err(|_| {
-                    PolarsError::ComputeError("token count exceeds the UInt32 output range".into())
-                })?;
-                output.append_value(count);
+                output.append_value(checked_count_o200k(text)?);
             }
         }
     }
 
     Ok(output.finish())
+}
+
+fn categorical_output<T: PolarsCategoricalType>(
+    categorical: &CategoricalChunked<T>,
+    counts: &[u32],
+) -> PolarsResult<UInt32Chunked> {
+    let physical = categorical.physical();
+    let mut output =
+        PrimitiveChunkedBuilder::<UInt32Type>::new(physical.name().clone(), physical.len());
+
+    for value in physical {
+        let Some(category) = value else {
+            output.append_null();
+            continue;
+        };
+        let category = category.as_cat();
+        let index = category as usize;
+        let count = counts.get(index).ok_or_else(|| {
+            PolarsError::ComputeError("categorical index exceeds its count lookup".into())
+        })?;
+        output.append_value(*count);
+    }
+
+    Ok(output.finish())
+}
+
+fn count_categorical_dense<T: PolarsCategoricalType>(
+    categorical: &CategoricalChunked<T>,
+) -> PolarsResult<UInt32Chunked> {
+    let physical = categorical.physical();
+    let mapping = categorical.get_mapping();
+    let mapping_len = mapping.num_cats_upper_bound();
+    let mut counts = vec![0_u32; mapping_len];
+    let mut seen = vec![false; mapping_len];
+    let mut output =
+        PrimitiveChunkedBuilder::<UInt32Type>::new(physical.name().clone(), physical.len());
+
+    for value in physical {
+        let Some(category) = value else {
+            output.append_null();
+            continue;
+        };
+        let category = category.as_cat();
+        let index = category as usize;
+        if index >= mapping_len {
+            return Err(PolarsError::ComputeError(
+                "categorical index exceeds its string mapping".into(),
+            ));
+        }
+        if !seen[index] {
+            let text = mapping.cat_to_str(category).ok_or_else(|| {
+                PolarsError::ComputeError("categorical value is missing from its mapping".into())
+            })?;
+            counts[index] = checked_count_o200k(text)?;
+            seen[index] = true;
+        }
+        output.append_value(counts[index]);
+    }
+
+    Ok(output.finish())
+}
+
+fn count_categorical_sparse<T: PolarsCategoricalType>(
+    categorical: &CategoricalChunked<T>,
+) -> PolarsResult<UInt32Chunked> {
+    let physical = categorical.physical();
+    let mapping = categorical.get_mapping();
+    let mut counts = HashMap::with_capacity(physical.len().min(4_096));
+    let mut output =
+        PrimitiveChunkedBuilder::<UInt32Type>::new(physical.name().clone(), physical.len());
+
+    for value in physical {
+        let Some(category) = value else {
+            output.append_null();
+            continue;
+        };
+        let category = category.as_cat();
+        let count = if let Some(count) = counts.get(&category) {
+            *count
+        } else {
+            let text = mapping.cat_to_str(category).ok_or_else(|| {
+                PolarsError::ComputeError("categorical value is missing from its mapping".into())
+            })?;
+            let count = checked_count_o200k(text)?;
+            counts.insert(category, count);
+            count
+        };
+        output.append_value(count);
+    }
+
+    Ok(output.finish())
+}
+
+fn count_categorical_parallel<T: PolarsCategoricalType>(
+    categorical: &CategoricalChunked<T>,
+) -> PolarsResult<UInt32Chunked> {
+    let physical = categorical.physical();
+    let mapping = categorical.get_mapping();
+    let mapping_len = mapping.num_cats_upper_bound();
+    let mut seen = vec![false; mapping_len];
+    let mut used = Vec::with_capacity(mapping_len.min(physical.len()));
+    for category in physical.into_iter().flatten() {
+        let category = category.as_cat();
+        let index = category as usize;
+        if index >= mapping_len {
+            return Err(PolarsError::ComputeError(
+                "categorical index exceeds its string mapping".into(),
+            ));
+        }
+        if !seen[index] {
+            seen[index] = true;
+            used.push(category);
+        }
+    }
+
+    let total_bytes = used.iter().try_fold(0_usize, |total, category| {
+        mapping
+            .cat_to_str(*category)
+            .map(|text| total.saturating_add(text.len()))
+            .ok_or_else(|| {
+                PolarsError::ComputeError("categorical value is missing from its mapping".into())
+            })
+    })?;
+    if total_bytes < PARALLEL_MIN_BYTES {
+        return count_categorical_dense(categorical);
+    }
+
+    let token_counts = POOL.install(|| {
+        used.par_iter()
+            .map(|category| {
+                let text = mapping.cat_to_str(*category).ok_or_else(|| {
+                    PolarsError::ComputeError(
+                        "categorical value is missing from its mapping".into(),
+                    )
+                })?;
+                checked_count_o200k(text)
+            })
+            .collect::<PolarsResult<Vec<_>>>()
+    })?;
+    let mut counts = vec![0_u32; mapping_len];
+    for (category, count) in used.into_iter().zip(token_counts) {
+        counts[category as usize] = count;
+    }
+    categorical_output(categorical, &counts)
+}
+
+fn count_categorical<T: PolarsCategoricalType>(
+    categorical: &CategoricalChunked<T>,
+    allow_parallel: bool,
+) -> PolarsResult<UInt32Chunked> {
+    let mapping_len = categorical.get_mapping().num_cats_upper_bound();
+    let dense_limit = categorical
+        .len()
+        .saturating_mul(CATEGORICAL_DENSE_RATIO)
+        .max(1_024);
+    if mapping_len > dense_limit {
+        count_categorical_sparse(categorical)
+    } else if allow_parallel && mapping_len >= CATEGORICAL_PARALLEL_MIN_CATEGORIES {
+        count_categorical_parallel(categorical)
+    } else {
+        count_categorical_dense(categorical)
+    }
 }
 
 /// Split contiguous rows into approximately byte-balanced ranges.
@@ -140,15 +309,33 @@ fn token_count(
         ));
     }
 
-    let strings = inputs[0].str()?;
-    let total_bytes = strings.get_values_size();
-    let should_parallelize = !context.parallel()
-        && THREAD_POOL.current_num_threads() > 1
-        && total_bytes >= PARALLEL_MIN_BYTES;
-    let output = if should_parallelize {
-        count_parallel(strings, total_bytes)?
-    } else {
-        count_chunk(strings)?
+    let input = &inputs[0];
+    let output = match input.dtype() {
+        DataType::String => {
+            let strings = input.str()?;
+            let total_bytes = strings.get_values_size();
+            let should_parallelize = !context.parallel()
+                && THREAD_POOL.current_num_threads() > 1
+                && total_bytes >= PARALLEL_MIN_BYTES;
+            if should_parallelize {
+                count_parallel(strings, total_bytes)?
+            } else {
+                count_chunk(strings)?
+            }
+        }
+        DataType::Categorical(_, _) | DataType::Enum(_, _) => {
+            with_match_categorical_physical_type!(input.dtype().cat_physical()?, |$C| {
+                count_categorical(
+                    input.cat::<$C>()?,
+                    !context.parallel() && THREAD_POOL.current_num_threads() > 1,
+                )
+            })?
+        }
+        dtype => {
+            return Err(PolarsError::ComputeError(
+                format!("expected `String`, `Categorical`, or `Enum`, got {dtype}").into(),
+            ));
+        }
     };
 
     Ok(output.into_series())

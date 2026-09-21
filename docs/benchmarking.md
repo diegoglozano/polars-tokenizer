@@ -36,6 +36,7 @@ uv run --no-sync python -m benchmarks.matrix \
   --lengths tiny,short,medium,long \
   --cardinalities 0.01,0.1,0.5,1.0 \
   --contents mixed,english,code,json,logs,urls,spanish,cjk,emoji \
+  --dtypes string,categorical \
   --threads 1,2,4,8 \
   --output /tmp/polars-tokenizer/matrix.json \
   --csv /tmp/polars-tokenizer/matrix.csv \

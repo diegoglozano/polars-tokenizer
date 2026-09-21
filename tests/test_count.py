@@ -102,6 +102,48 @@ def test_group_by_context() -> None:
     ]
 
 
+def test_categorical_counts_dictionary_values_once_semantically() -> None:
+    values = ["hello world", "你好", None, "hello world", "", "你好"]
+    frame = pl.DataFrame({"text": values}).with_columns(pl.col("text").cast(pl.Categorical))
+    expected = [reference_count(value) if value is not None else None for value in values]
+
+    result = frame.select(tokens.count("text"))
+    assert result.to_series().to_list() == expected
+    assert result.schema["text"] == pl.UInt32
+
+
+def test_enum_with_unused_categories() -> None:
+    values = ["alpha", None, "beta", "alpha"]
+    dtype = pl.Enum(["unused", "alpha", "beta", "also unused"])
+    frame = pl.DataFrame({"text": pl.Series(values, dtype=dtype)})
+    expected = [reference_count(value) if value is not None else None for value in values]
+
+    assert frame.select(tokens.count("text")).to_series().to_list() == expected
+
+
+def test_categorical_lazy_streaming() -> None:
+    values = ["repeat", "repeat", None, "different"]
+    frame = pl.DataFrame({"text": values}).with_columns(pl.col("text").cast(pl.Categorical))
+    expected = [reference_count(value) if value is not None else None for value in values]
+    result = frame.lazy().select(tokens.count("text")).collect(engine="streaming")
+    assert result.to_series().to_list() == expected
+
+
+def test_wide_categorical_ids_match_reference() -> None:
+    values = [f"category-{index}" for index in range(66_000)]
+    frame = pl.DataFrame({"text": values}).with_columns(pl.col("text").cast(pl.Categorical))
+    expected = [reference_count(value) for value in values]
+    assert frame.select(tokens.count("text")).to_series().to_list() == expected
+
+
+def test_sparse_enum_mapping_uses_only_present_values() -> None:
+    categories = [f"category-{index}" for index in range(2_048)]
+    values = [categories[3], None, categories[-1], categories[3]]
+    frame = pl.DataFrame({"text": pl.Series(values, dtype=pl.Enum(categories))})
+    expected = [reference_count(value) if value is not None else None for value in values]
+    assert frame.select(tokens.count("text")).to_series().to_list() == expected
+
+
 def test_unsupported_tokenizer_fails_early() -> None:
     with pytest.raises(ValueError, match="unsupported tokenizer"):
         tokens.count(
@@ -111,7 +153,9 @@ def test_unsupported_tokenizer_fails_early() -> None:
 
 
 def test_non_string_column_errors() -> None:
-    with pytest.raises(pl.exceptions.ComputeError, match="expected `String`"):
+    with pytest.raises(
+        pl.exceptions.ComputeError, match="expected `String`, `Categorical`, or `Enum`"
+    ):
         pl.DataFrame({"value": [1, 2]}).select(tokens.count("value"))
 
 

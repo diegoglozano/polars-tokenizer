@@ -1297,6 +1297,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "polars",
+ "polars-core",
  "pyo3-polars",
  "rayon",
  "serde",

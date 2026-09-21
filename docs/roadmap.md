@@ -9,8 +9,8 @@ catalog concerns from leaking into the exact tokenizer kernel.
   baselines with the benchmark matrix.
 - Profile pre-tokenization, BPE merging, output construction, and Polars
   integration independently.
-- Benchmark a categorical/dictionary fast path that counts each dictionary
-  value once.
+- Implemented: categorical/enum inputs count each used dictionary value once
+  with dense, sparse, and parallel physical-ID paths.
 - Benchmark bounded whole-value caches at 0.01%, 0.1%, 1%, 10%, 50%, and 100%
   cardinality before choosing an automatic policy.
 - Investigate exceptionally large individual rows without introducing nested
