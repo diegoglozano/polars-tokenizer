@@ -19,12 +19,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
-      - run: uv sync --frozen --group dev
-      - run: uv run maturin develop
-      - run: uv run pytest
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run ty check
+      - run: uv sync --frozen --group dev --no-install-project
+      - run: uv run --no-sync maturin develop
+      - run: uv run --no-sync pytest
+      - run: uv run --no-sync ruff check .
+      - run: uv run --no-sync ruff format --check .
+      - run: uv run --no-sync ty check
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all-targets
