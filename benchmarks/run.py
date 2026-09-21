@@ -1,68 +1,71 @@
-"""Reproducible end-to-end exact-count benchmark with JSON output."""
+"""Run one reproducible end-to-end exact-count benchmark case."""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import platform
-import random
 import resource
 import shutil
 import subprocess
 import sys
 import time
 from collections.abc import Callable
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 from pathlib import Path
+from statistics import median
 from typing import Any, TypeVar
 
 import polars as pl
 import polars_tokenizer as tokens
 import tiktoken
 
-SAMPLES = (
-    "The quick brown fox jumps over the lazy dog. ",
-    "const result = items.map((item) => item.value);\n",
-    '{"level":"info","status":200,"duration_ms":12}\n',
-    "https://example.com/search?q=token+analytics&lang=en ",
-    "El cliente solicitó información sobre su pedido. ",
-    "今天的天气很好，我们去散步吧。",
-    "🚀🌍👋🏽✨ ",
+from benchmarks._data import (
+    CONTENT_TYPES,
+    LENGTH_BYTES,
+    dataset_digest,
+    dataset_statistics,
+    make_dataset,
 )
-LENGTH_BYTES = {"tiny": 24, "short": 128, "medium": 2_048, "long": 32_768}
+
 T = TypeVar("T")
 
 
-def make_dataset(rows: int, length: str, cardinality: float, seed: int) -> list[str]:
-    rng = random.Random(seed)
-    unique = max(1, min(rows, round(rows * cardinality)))
-    target = LENGTH_BYTES[length]
-    values: list[str] = []
-    for index in range(unique):
-        sample = SAMPLES[index % len(SAMPLES)]
-        text = (sample * (target // len(sample.encode()) + 1)).encode()[:target]
-        values.append(text.decode(errors="ignore") + f" {index}")
-    return [values[rng.randrange(unique)] for _ in range(rows)]
+def timed(callable_: Callable[[], T], repeats: int = 1) -> tuple[T, list[dict[str, float]]]:
+    if repeats <= 0:
+        raise ValueError("repeats must be positive")
+    samples = []
+    result: T
+    for _ in range(repeats):
+        wall_start = time.perf_counter()
+        cpu_start = time.process_time()
+        result = callable_()
+        cpu_seconds = time.process_time() - cpu_start
+        wall_seconds = time.perf_counter() - wall_start
+        samples.append(
+            {
+                "wall_seconds": wall_seconds,
+                "cpu_seconds": cpu_seconds,
+                "process_cpu_percent": cpu_seconds / wall_seconds * 100,
+            }
+        )
+    return result, samples
 
 
-def timed(callable_: Callable[[], T], repeats: int = 1) -> tuple[T, float]:
-    start = time.perf_counter()
-    result = callable_()
-    best = time.perf_counter() - start
-    for _ in range(repeats - 1):
-        start = time.perf_counter()
-        candidate = callable_()
-        best = min(best, time.perf_counter() - start)
-        result = candidate
-    return result, best
-
-
-def rate(seconds: float, rows: int, byte_count: int) -> dict[str, float]:
+def rate(
+    samples: list[dict[str, float]], rows: int, byte_count: int, token_count: int
+) -> dict[str, Any]:
+    seconds = median(sample["wall_seconds"] for sample in samples)
     return {
         "seconds": seconds,
+        "best_seconds": min(sample["wall_seconds"] for sample in samples),
         "rows_per_second": rows / seconds,
         "mib_per_second": byte_count / seconds / (1024 * 1024),
+        "tokens_per_second": token_count / seconds,
+        "process_cpu_percent": median(sample["process_cpu_percent"] for sample in samples),
+        "samples": samples,
     }
 
 
@@ -75,6 +78,14 @@ def machine_metadata() -> dict[str, Any]:
         if rustc
         else None
     )
+    try:
+        plugin_version = package_version("polars-tokenizer")
+    except PackageNotFoundError:
+        plugin_version = None
+    git = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
+    git_status = subprocess.run(
+        ["git", "status", "--porcelain"], capture_output=True, text=True, check=False
+    )
     return {
         "platform": platform.platform(),
         "machine": platform.machine(),
@@ -85,7 +96,11 @@ def machine_metadata() -> dict[str, Any]:
         "polars": pl.__version__,
         "polars_threads": pl.thread_pool_size(),
         "tiktoken": tiktoken.__version__,
+        "polars_tokenizer": plugin_version,
         "polars_max_threads": os.environ.get("POLARS_MAX_THREADS"),
+        "rustflags": os.environ.get("RUSTFLAGS"),
+        "git_commit": git.stdout.strip() or None,
+        "git_dirty": bool(git_status.stdout.strip()),
     }
 
 
@@ -93,48 +108,77 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rows", type=int, default=100_000)
     parser.add_argument("--length", choices=LENGTH_BYTES, default="short")
+    parser.add_argument("--content", choices=CONTENT_TYPES, default="mixed")
     parser.add_argument("--cardinality", type=float, default=1.0)
+    parser.add_argument("--null-rate", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--warm-repeats", type=int, default=5)
+    parser.add_argument("--skip-reference", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    if args.rows <= 0 or not 0 < args.cardinality <= 1:
-        parser.error("--rows must be positive and --cardinality must be in (0, 1]")
+    if args.warm_repeats <= 0:
+        parser.error("--warm-repeats must be positive")
 
-    values = make_dataset(args.rows, args.length, args.cardinality, args.seed)
-    byte_count = sum(len(value.encode()) for value in values)
-    digest = hashlib.sha256("\0".join(values).encode()).hexdigest()
+    try:
+        values = make_dataset(
+            args.rows,
+            args.length,
+            args.cardinality,
+            args.seed,
+            content=args.content,
+            null_rate=args.null_rate,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+    null_rows = min(args.rows - 1, round(args.rows * args.null_rate))
+    non_null_rows = args.rows - null_rows
+    unique_values = max(1, min(non_null_rows, round(non_null_rows * args.cardinality)))
+    statistics = dataset_statistics(values, unique_values=unique_values)
+    byte_count = int(statistics["bytes"])
     frame = pl.DataFrame({"text": values})
     expression = tokens.count("text").alias("count")
 
-    _, cold_seconds = timed(lambda: frame.select(expression))
-    plugin_result, warm_seconds = timed(lambda: frame.select(expression), repeats=5)
+    _, cold_samples = timed(lambda: frame.select(expression))
+    plugin_result, warm_samples = timed(lambda: frame.select(expression), repeats=args.warm_repeats)
+    plugin_values = plugin_result.to_series().to_list()
+    total_tokens = sum(value for value in plugin_values if value is not None)
 
-    _, init_seconds = timed(lambda: tiktoken.get_encoding("o200k_base"))
-    encoding = tiktoken.get_encoding("o200k_base")
-    reference, scalar_seconds = timed(
-        lambda: [len(encoding.encode(value, disallowed_special=())) for value in values]
-    )
-    if plugin_result.to_series().to_list() != reference:
-        raise RuntimeError("plugin output differs from tiktoken reference")
+    reference_measurement = None
+    _, init_samples = timed(lambda: tiktoken.get_encoding("o200k_base"))
+    if not args.skip_reference:
+        encoding = tiktoken.get_encoding("o200k_base")
+        reference, scalar_samples = timed(
+            lambda: [
+                len(encoding.encode(value, disallowed_special=())) if value is not None else None
+                for value in values
+            ]
+        )
+        if plugin_values != reference:
+            raise RuntimeError("plugin output differs from tiktoken reference")
+        reference_measurement = rate(scalar_samples, args.rows, byte_count, total_tokens)
 
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     rss_bytes = rss if sys.platform == "darwin" else rss * 1024
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "dataset": {
-            "rows": args.rows,
-            "bytes": byte_count,
+            **statistics,
             "length_class": args.length,
-            "cardinality": args.cardinality,
+            "target_bytes_per_value": LENGTH_BYTES[args.length],
+            "content": args.content,
+            "requested_cardinality": args.cardinality,
+            "requested_null_rate": args.null_rate,
+            "null_rate": statistics["null_rows"] / args.rows,
             "seed": args.seed,
-            "sha256": digest,
+            "sha256": dataset_digest(values),
         },
         "measurements": {
-            "plugin_cold": rate(cold_seconds, args.rows, byte_count),
-            "plugin_warm": rate(warm_seconds, args.rows, byte_count),
-            "python_tiktoken_scalar": rate(scalar_seconds, args.rows, byte_count),
-            "tiktoken_initialization_seconds": init_seconds,
+            "plugin_cold": rate(cold_samples, args.rows, byte_count, total_tokens),
+            "plugin_warm": rate(warm_samples, args.rows, byte_count, total_tokens),
+            "python_tiktoken_scalar": reference_measurement,
+            "tiktoken_initialization_seconds": init_samples[0]["wall_seconds"],
             "peak_rss_bytes": rss_bytes,
+            "total_tokens": total_tokens,
         },
         "environment": machine_metadata(),
     }

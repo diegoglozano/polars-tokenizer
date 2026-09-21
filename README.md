@@ -44,12 +44,12 @@ wrappers, roles, tools, images, provider request serialization, or pricing.
 Prerequisites are Rust 1.87+ and `uv`. A C-compatible linker is also required.
 
 ```bash
-uv sync --group dev
-uv run maturin develop --release
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
-uv run ty check
+uv sync --group dev --no-install-project
+uv run --no-sync maturin develop --release
+uv run --no-sync pytest
+uv run --no-sync ruff check .
+uv run --no-sync ruff format --check .
+uv run --no-sync ty check
 cargo test --all-targets
 cargo clippy --all-targets -- -D warnings
 ```
@@ -66,19 +66,34 @@ Run the Rust count-only kernel benchmark:
 cargo bench --bench exact_count
 ```
 
-Run an end-to-end Polars/Python comparison and write machine-readable results:
+Run one end-to-end Polars/Python comparison and write machine-readable results:
 
 ```bash
-uv run python benchmarks/run.py \
-  --rows 100000 --length short --cardinality 1.0 \
+uv run --no-sync python -m benchmarks.run \
+  --rows 100000 --length short --content mixed --cardinality 1.0 \
   --output benchmarks/results/latest.json
 ```
 
-The runner reports input bytes, rows/s, MiB/s, tokenizer initialization, warm
-plugin execution, the Python `tiktoken` scalar baseline, peak RSS, environment
-metadata, and a deterministic dataset hash. Use `--help` for dataset controls.
-Benchmark numbers are not checked into this repository because no measurements
-have yet been made on a controlled host.
+Run an isolated matrix across workload and thread-count axes:
+
+```bash
+uv run --no-sync python -m benchmarks.matrix \
+  --rows 1000,100000 \
+  --lengths tiny,short,medium \
+  --cardinalities 0.01,0.1,1.0 \
+  --contents mixed,code,cjk \
+  --threads 1,2,4 \
+  --output benchmarks/results/matrix.json \
+  --csv benchmarks/results/matrix.csv \
+  --parquet benchmarks/results/matrix.parquet
+```
+
+The runners report input bytes, rows/s, MiB/s, tokens/s, process CPU usage,
+tokenizer initialization, cold and median warm execution, the Python
+`tiktoken` scalar baseline, peak RSS, environment metadata, and deterministic
+dataset hashes. Matrix cases run in separate processes because Polars fixes its
+thread pool at process startup. Inputs estimated above 512 MiB are skipped by
+default; use `--max-input-mib` deliberately on larger hosts.
 
 ## Correctness contract
 
@@ -97,17 +112,25 @@ property-generated Unicode strings. Inputs are never normalized.
 
 ## Scope and roadmap
 
-This repository implements Phase 1 only. In particular, `estimate`, model
-aliases, cache controls, categorical specialization, fused aggregations, and
-DataFrame-level analytics are not exposed yet. The next changes should be
-driven by profiles and benchmark data in this order:
+This repository implements the exact-counting foundation only. In particular,
+`estimate`, model aliases, cache controls, categorical specialization, fused
+aggregations, cost estimation, and DataFrame-level analytics are not exposed
+yet. The next changes should be driven by profiles and benchmark data in this
+order:
 
 1. establish controlled-host performance and memory baselines;
 2. benchmark categorical and bounded whole-value caches;
 3. optimize exceptionally large individual rows without oversubscription;
 4. add a separately measured estimator;
 5. add `cl100k_base` and model aliases without coupling provider names to the
-   tokenizer engine.
+   tokenizer engine;
+6. add model-based raw-text cost estimation using versioned pricing snapshots.
+
+Cost estimation will accept a **model**, not a tokenizer. A model registry will
+resolve both its tokenizer and its input/cached-input/output prices in a
+higher-level layer. The tokenizer kernel will remain provider-agnostic, and
+pricing updates will never silently alter a pinned calculation. See
+[docs/roadmap.md](docs/roadmap.md) for the proposed boundary.
 
 See [docs/architecture.md](docs/architecture.md) for the design boundaries and
 [docs/benchmarking.md](docs/benchmarking.md) for the benchmark protocol.

@@ -37,6 +37,7 @@ strip = true
 
 [tool.pytest.ini_options]
 addopts = "-ra --strict-config --strict-markers"
+pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -47,6 +48,7 @@ target-version = "py310"
 select = ["B", "E", "F", "I", "PERF", "RUF", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
+"benchmarks/_data.py" = ["RUF001"]
 "benchmarks/run.py" = ["RUF001"]
 "tests/test_count.py" = ["RUF001"]
 

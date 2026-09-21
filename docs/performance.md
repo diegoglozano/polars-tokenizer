@@ -38,10 +38,42 @@ normal for this shared host. A threshold sweep found neutral or negative gains
 at 250–400 KiB and a positive crossover near 500 KiB, which is why the runtime
 cutoff is 512 KiB.
 
+## Cardinality sweep before whole-value caching
+
+The benchmark-matrix milestone measured 100,000 mixed 128-byte strings with
+the current exact kernel, five warm repetitions, and reference parity enabled.
+These are directional shared-host results. They establish the baseline that a
+future categorical or whole-value cache must beat.
+
+| Cardinality | 1 thread MiB/s | 4 threads MiB/s |
+|---:|---:|---:|
+| 0.01% | 264 | 719 |
+| 0.1% | 174 | 471 |
+| 1% | 167 | 374 |
+| 10% | 162 | 376 |
+| 50% | 173 | 431 |
+| 100% | 176 | 413 |
+
+Extreme repetition already benefits from the tokenizer's bounded internal
+piece cache. A dedicated dictionary fast path may still avoid repeated
+pre-tokenization and row-level dispatch, but its comparison baseline at 0.01%
+cardinality is 719 MiB/s rather than the 413 MiB/s high-cardinality result.
+The non-monotonic middle values should not be over-interpreted on this shared
+host.
+
+Reproduce the sweep with:
+
+```bash
+uv run --no-sync python -m benchmarks.matrix \
+  --rows 100000 --lengths short \
+  --cardinalities 0.0001,0.001,0.01,0.1,0.5,1.0 \
+  --contents mixed --threads 1,4 --warm-repeats 5
+```
+
 Re-run the committed end-to-end harness with fixed thread counts:
 
 ```bash
-POLARS_MAX_THREADS=1 uv run python benchmarks/run.py --rows 100000
-POLARS_MAX_THREADS=2 uv run python benchmarks/run.py --rows 100000
-POLARS_MAX_THREADS=4 uv run python benchmarks/run.py --rows 100000
+POLARS_MAX_THREADS=1 uv run --no-sync python -m benchmarks.run --rows 100000
+POLARS_MAX_THREADS=2 uv run --no-sync python -m benchmarks.run --rows 100000
+POLARS_MAX_THREADS=4 uv run --no-sync python -m benchmarks.run --rows 100000
 ```
