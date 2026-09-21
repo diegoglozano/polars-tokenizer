@@ -1,0 +1,54 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[project]
+name = "polars-tokenizer"
+version = "0.1.0"
+description = "High-performance token analytics for Polars"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "polars-tokenizer contributors" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Rust",
+  "Typing :: Typed",
+]
+dependencies = ["polars==1.36.1"]
+
+[dependency-groups]
+dev = [
+  "hypothesis>=6.140",
+  "maturin>=1.9,<2",
+  "pytest>=8.4",
+  "ruff>=0.13",
+  "tiktoken==0.12.0",
+  "ty>=0.0.1a21",
+]
+
+[tool.maturin]
+python-source = "python"
+module-name = "polars_tokenizer._polars_tokenizer"
+bindings = "pyo3"
+strip = true
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "PERF", "RUF", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"benchmarks/run.py" = ["RUF001"]
+"tests/test_count.py" = ["RUF001"]
+
+[tool.ty.environment]
+python-version = "3.10"
