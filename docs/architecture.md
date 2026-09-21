@@ -25,12 +25,16 @@ across Polars worker threads.
 
 ## Parallelism boundary
 
-The expression is elementwise and batch independent. Polars can split and
-schedule it while preserving lazy and streaming execution. The kernel is
-intentionally sequential within a batch today: starting Rayon work inside a
-Polars worker can oversubscribe the host. Byte-balanced intra-batch partitioning
-belongs in a later phase only after profiles establish that Polars scheduling is
-insufficient for highly skewed rows.
+The expression is elementwise and batch independent. For calls of at least 512
+KiB where Polars reports that the caller is not already parallel, the kernel
+partitions contiguous rows by logical UTF-8 bytes and executes four tasks per
+worker on Polars' own thread pool. Collecting the indexed parallel iterator
+preserves row order. Smaller calls and already-parallel contexts stay
+sequential, avoiding dispatch overhead and nested oversubscription.
+
+Rows are indivisible. One exceptionally large string can therefore dominate a
+partition; splitting safely at tokenizer pre-token boundaries is a separate
+future optimization.
 
 ## Version boundary
 

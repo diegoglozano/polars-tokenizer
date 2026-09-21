@@ -83,6 +83,7 @@ def machine_metadata() -> dict[str, Any]:
         "python": platform.python_version(),
         "rust": rust or None,
         "polars": pl.__version__,
+        "polars_threads": pl.thread_pool_size(),
         "tiktoken": tiktoken.__version__,
         "polars_max_threads": os.environ.get("POLARS_MAX_THREADS"),
     }

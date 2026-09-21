@@ -71,6 +71,37 @@ def test_expression_composes() -> None:
     assert result.item() == 2
 
 
+def test_large_parallel_batch_matches_reference_and_is_deterministic() -> None:
+    values = [
+        None if index % 17 == 0 else f"row {index}: hello 世界 👋🏽 " * (index % 7 + 1)
+        for index in range(8_000)
+    ]
+    frame = pl.DataFrame({"text": values})
+    expected = [reference_count(value) if value is not None else None for value in values]
+
+    for _ in range(3):
+        actual = frame.select(tokens.count("text")).to_series().to_list()
+        assert actual == expected
+
+
+def test_byte_balancing_handles_one_large_row() -> None:
+    values = ["small", ("one very long row " * 20_000), None, "tail"]
+    frame = pl.DataFrame({"text": values})
+    expected = [reference_count(value) if value is not None else None for value in values]
+    assert frame.select(tokens.count("text")).to_series().to_list() == expected
+
+
+def test_group_by_context() -> None:
+    frame = pl.DataFrame(
+        {"group": ["a", "a", "b", "b"], "text": ["hello", "two words", None, "你好"]}
+    )
+    result = frame.group_by("group", maintain_order=True).agg(tokens.count("text")).to_dicts()
+    assert result == [
+        {"group": "a", "text": [1, 2]},
+        {"group": "b", "text": [None, reference_count("你好")]},
+    ]
+
+
 def test_unsupported_tokenizer_fails_early() -> None:
     with pytest.raises(ValueError, match="unsupported tokenizer"):
         tokens.count(
