@@ -1,0 +1,13 @@
+/target/
+/.venv/
+/.pytest_cache/
+/.ruff_cache/
+/.hypothesis/
+/.ty_cache/
+__pycache__/
+*.py[cod]
+*.so
+*.dylib
+*.dll
+/benchmarks/results/
+/dist/
