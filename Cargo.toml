@@ -12,6 +12,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 polars = { version = "=0.52.0", default-features = false }
+polars-core = { version = "=0.52.0", default-features = false, features = ["dtype-categorical"] }
 pyo3-polars = { version = "=0.25.0", features = ["derive"] }
 rayon = "1.10"
 serde = { version = "1.0", features = ["derive"] }

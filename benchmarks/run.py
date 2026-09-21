@@ -24,6 +24,7 @@ import tiktoken
 
 from benchmarks._data import (
     CONTENT_TYPES,
+    INPUT_DTYPES,
     LENGTH_BYTES,
     dataset_digest,
     dataset_statistics,
@@ -109,6 +110,7 @@ def main() -> None:
     parser.add_argument("--rows", type=int, default=100_000)
     parser.add_argument("--length", choices=LENGTH_BYTES, default="short")
     parser.add_argument("--content", choices=CONTENT_TYPES, default="mixed")
+    parser.add_argument("--input-dtype", choices=INPUT_DTYPES, default="string")
     parser.add_argument("--cardinality", type=float, default=1.0)
     parser.add_argument("--null-rate", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=42)
@@ -135,7 +137,10 @@ def main() -> None:
     unique_values = max(1, min(non_null_rows, round(non_null_rows * args.cardinality)))
     statistics = dataset_statistics(values, unique_values=unique_values)
     byte_count = int(statistics["bytes"])
-    frame = pl.DataFrame({"text": values})
+    series = pl.Series("text", values)
+    if args.input_dtype == "categorical":
+        series = series.cast(pl.Categorical)
+    frame = pl.DataFrame(series)
     expression = tokens.count("text").alias("count")
 
     _, cold_samples = timed(lambda: frame.select(expression))
@@ -160,12 +165,13 @@ def main() -> None:
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     rss_bytes = rss if sys.platform == "darwin" else rss * 1024
     report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "dataset": {
             **statistics,
             "length_class": args.length,
             "target_bytes_per_value": LENGTH_BYTES[args.length],
             "content": args.content,
+            "input_dtype": args.input_dtype,
             "requested_cardinality": args.cardinality,
             "requested_null_rate": args.null_rate,
             "null_rate": statistics["null_rows"] / args.rows,

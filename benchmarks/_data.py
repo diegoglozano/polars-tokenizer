@@ -49,6 +49,7 @@ CONTENT_SAMPLES: Final = {
     ),
 }
 CONTENT_TYPES: Final = ("mixed", *CONTENT_SAMPLES)
+INPUT_DTYPES: Final = ("string", "categorical")
 
 
 def _value_for(sample: str, target_bytes: int, index: int) -> str:
