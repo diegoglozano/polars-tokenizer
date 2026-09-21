@@ -1298,6 +1298,7 @@ dependencies = [
  "criterion",
  "polars",
  "pyo3-polars",
+ "rayon",
  "serde",
  "tiktoken",
 ]

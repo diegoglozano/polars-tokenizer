@@ -28,8 +28,9 @@ df.select(tokens.count(pl.col("text"), tokenizer="o200k_base"))
 - Polars string values are visited as borrowed `&str` views. No `Vec<String>`
   or `Vec<&str>` is materialized.
 - Nulls are appended directly to a pre-sized `UInt32` output builder.
-- The function is registered as elementwise, so Polars may schedule batches in
-  its own runtime. The kernel does not create a nested thread pool.
+- The function is registered as elementwise and uses Polars' own thread pool
+  for byte-balanced work above 512 KiB. It stays sequential when the caller is
+  already parallel, preventing nested oversubscription.
 - `o200k_base` vocabulary data is compiled into the wheel and pinned by
   `Cargo.lock`; execution performs no network access.
 - Special-token-looking substrings are ordinary raw text. This matches
@@ -101,9 +102,9 @@ aliases, cache controls, categorical specialization, fused aggregations, and
 DataFrame-level analytics are not exposed yet. The next changes should be
 driven by profiles and benchmark data in this order:
 
-1. profile the exact kernel and quantify Polars/FFI overhead;
-2. improve byte-balanced execution without nested parallelism;
-3. benchmark categorical and bounded repeated-value caches;
+1. establish controlled-host performance and memory baselines;
+2. benchmark categorical and bounded whole-value caches;
+3. optimize exceptionally large individual rows without oversubscription;
 4. add a separately measured estimator;
 5. add `cl100k_base` and model aliases without coupling provider names to the
    tokenizer engine.
