@@ -99,6 +99,12 @@ dataset hashes. Matrix cases run in separate processes because Polars fixes its
 thread pool at process startup. Inputs estimated above 512 MiB are skipped by
 default; use `--max-input-mib` deliberately on larger hosts.
 
+An optional, isolated benchmark for Google's experimental local Gemma 3
+tokenizer compares its Python wrapper with direct SentencePiece scalar and
+batch paths. It does not add Google, SentencePiece, Transformers, or PyTorch to
+the project dependencies. See [docs/benchmarking.md](docs/benchmarking.md) for
+the versioned `uv` command and measurement boundaries.
+
 ## Correctness contract
 
 For every valid Python string `s`:

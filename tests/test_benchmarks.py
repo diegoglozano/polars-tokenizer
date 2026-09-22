@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from benchmarks._data import CONTENT_TYPES, dataset_digest, dataset_statistics, make_dataset
+from benchmarks.gemini_local import (
+    google_batch_total,
+    google_scalar,
+    sentencepiece_batch_ids,
+    sentencepiece_scalar_ids,
+)
+from benchmarks.gemini_local import rate as gemini_rate
 from benchmarks.matrix import flatten_report
 
 
@@ -93,3 +102,53 @@ def test_flatten_report_keeps_comparison_fields() -> None:
     assert rows[0]["threads"] == 2
     assert rows[0]["input_dtype"] == "categorical"
     assert rows[0]["git_dirty"] is True
+
+
+def test_gemini_benchmark_rate_uses_median_wall_time() -> None:
+    samples = [
+        {"wall_seconds": 2.0, "cpu_seconds": 1.0, "process_cpu_percent": 50.0},
+        {"wall_seconds": 1.0, "cpu_seconds": 1.0, "process_cpu_percent": 100.0},
+        {"wall_seconds": 3.0, "cpu_seconds": 1.0, "process_cpu_percent": 33.0},
+    ]
+
+    measurement = gemini_rate(samples, rows=20, byte_count=2 * 1024 * 1024, token_count=30)
+
+    assert measurement["seconds"] == 2.0
+    assert measurement["best_seconds"] == 1.0
+    assert measurement["rows_per_second"] == 10.0
+    assert measurement["mib_per_second"] == 1.0
+    assert measurement["tokens_per_second"] == 15.0
+
+
+def test_gemini_benchmark_paths_preserve_counts() -> None:
+    class FakeTokenizer:
+        def count_tokens(self, contents: str | list[str]) -> SimpleNamespace:
+            texts = [contents] if isinstance(contents, str) else contents
+            return SimpleNamespace(total_tokens=sum(len(text) for text in texts))
+
+    class FakeProcessor:
+        def encode(self, contents: str | list[str]) -> list[int] | list[list[int]]:
+            if isinstance(contents, str):
+                return list(range(len(contents)))
+            return [list(range(len(text))) for text in contents]
+
+    texts = ["a", "three", ""]
+    expected_counts = [1, 5, 0]
+
+    google_per_row = google_scalar(FakeTokenizer(), texts)
+    google_total = google_batch_total(FakeTokenizer(), texts)
+    sentencepiece_per_row = sentencepiece_scalar_ids(FakeProcessor(), texts)
+    sentencepiece_batch = sentencepiece_batch_ids(FakeProcessor(), texts)
+
+    assert google_per_row.counts == expected_counts
+    assert sentencepiece_per_row.counts == expected_counts
+    assert sentencepiece_batch.counts == expected_counts
+    assert {
+        result.total
+        for result in (
+            google_per_row,
+            google_total,
+            sentencepiece_per_row,
+            sentencepiece_batch,
+        )
+    } == {6}
