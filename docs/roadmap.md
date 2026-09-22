@@ -38,6 +38,55 @@ Conceptually:
 model identifier -> model metadata -> tokenizer identifier -> count kernel
 ```
 
+## Gemini local tokenizers (investigation TODO)
+
+Google's experimental Python `LocalTokenizer` currently gives us a promising
+reference path, but not yet a blanket exactness guarantee for every Gemini
+model. Its Gemma 3 path loads a hash-pinned SentencePiece model. Its
+`count_tokens()` implementation then calls `encode()` and sums the lengths of
+the returned token-ID lists, so a Polars-native count-only kernel may avoid
+substantial allocation and Python/API overhead on large columns. Newer mapped
+models use a separate Gemma 4 Hugging Face tokenizer path and must be evaluated
+independently.
+
+Before adding public Gemini support:
+
+- [ ] Benchmark Google's local tokenizer as shipped, its underlying
+  SentencePiece batch operation, and remote `countTokens` separately. Record
+  initialization/download time, cold and warm throughput, peak RSS, and
+  allocations for scalar and batch workloads.
+- [ ] Treat `gemma3`/`gemma4` as versioned tokenizer definitions and Gemini
+  names as model aliases. Do not put Gemini-specific branching in the tokenizer
+  kernel.
+- [ ] Prototype a pure-Rust, per-value, count-only SentencePiece/Unigram kernel
+  for the pinned Gemma 3 model without materializing token IDs.
+- [ ] Preserve the tokenizer model's configured normalization and byte-fallback
+  behavior exactly; do not apply an independent Unicode normalization pass.
+- [ ] Compare against the official local implementation on the complete
+  multilingual/fuzz corpus and against remote `countTokens` for stable model
+  IDs. Publish any raw-text versus request-accounting differences.
+- [ ] Reuse the existing Arrow, categorical/enum, byte-balanced parallel, and
+  bounded-cache paths only after single-value parity is proven.
+- [ ] Audit tokenizer artifact licensing and distribution. Pin the artifact
+  URL, SHA-256, algorithm/configuration, and model-alias registry version; use
+  an explicit verified download/cache flow if bundling is not permitted.
+- [ ] Evaluate Gemma 4 separately, including its tokenizer artifact, processor
+  behavior, dependency footprint, and whether a pure-Rust compatible path is
+  possible.
+- [ ] Add `gemma3` or `gemma4` to `count()` only after exactness is demonstrated
+  for a pinned definition. If remote behavior cannot be reproduced locally,
+  keep that mapping experimental or offer estimation rather than label it
+  exact.
+
+The initial scope remains raw text. Multimodal inputs, roles, tools, response
+schemas, and provider request serialization belong to future request-level
+accounting even where Google's local helper accepts some of those structures.
+
+Reference implementations and definitions:
+
+- [Google Gen AI Python local tokenizer](https://github.com/googleapis/python-genai/blob/main/google/genai/local_tokenizer.py)
+- [Google Gen AI tokenizer loader and pinned model mappings](https://github.com/googleapis/python-genai/blob/main/google/genai/_local_tokenizer_loader.py)
+
 ## Model-based cost estimation (TODO)
 
 Cost estimation is a higher-level analytics feature and will accept a model,
