@@ -127,7 +127,9 @@ driven by profiles and benchmark data in this order:
 4. add a separately measured estimator;
 5. add `cl100k_base` and model aliases without coupling provider names to the
    tokenizer engine;
-6. add model-based raw-text cost estimation using versioned pricing snapshots.
+6. evaluate a pure-Rust, count-only SentencePiece/Unigram path for Google's
+   pinned Gemma tokenizer definitions, with Gemini names kept as model aliases;
+7. add model-based raw-text cost estimation using versioned pricing snapshots.
 
 Cost estimation will accept a **model**, not a tokenizer. A model registry will
 resolve both its tokenizer and its input/cached-input/output prices in a
