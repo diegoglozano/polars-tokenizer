@@ -60,6 +60,36 @@ profile:
 4. BPE merging/counting;
 5. output-array construction.
 
+## Gemini/Gemma 3 local baseline
+
+The optional Gemini benchmark deliberately does not add Google's tokenizer or
+its heavier extras to the project environment. For the current Gemma 3 path,
+run an isolated, explicitly versioned environment with the lightweight direct
+dependencies:
+
+```bash
+uv run --no-sync \
+  --with google-genai==2.11.0 \
+  --with sentencepiece==0.2.1 \
+  --with protobuf==6.32.1 \
+  python -m benchmarks.gemini_local \
+  --model gemini-2.5-flash \
+  --rows 10000 --length short --content mixed \
+  --output /tmp/polars-tokenizer/gemini-local.json
+```
+
+The runner separately reports Google's `LocalTokenizer` scalar and aggregate
+batch paths plus direct SentencePiece scalar and batch-ID paths. It verifies
+that all selected paths agree, records the resolved package versions and
+hash-pinned tokenizer artifact, and reports import, initialization, cold, warm,
+CPU, throughput, and process peak-RSS measurements.
+
+Run one `--implementation` per process when comparing peak RSS; the default
+`all` mode is intended for correctness and timing comparisons in one report.
+This benchmark supports only SDK mappings backed by the pinned SentencePiece
+artifact. Gemma 4/Hugging Face mappings require a separate environment and
+benchmark because their dependencies and processor behavior differ.
+
 Before adding caching, run every workload with cache disabled, automatic, and
 forced at 0.01%, 0.1%, 1%, 10%, 50%, and 100% cardinality. Before adding an
 estimator, freeze a held-out corpus and report MAE, median absolute error, MAPE,

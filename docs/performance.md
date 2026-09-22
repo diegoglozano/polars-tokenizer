@@ -10,6 +10,39 @@ Versions: Polars 1.36.1, GigaToken 0.10.0, and the official `o200k_base` rank
 file with SHA-256
 `446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d`.
 
+## Google local Gemma 3 baseline
+
+An isolated exploratory run measured Google Gen AI 2.11.0, SentencePiece
+0.2.1, and protobuf 6.32.1 on the same shared 4-vCPU x86_64 host. The corpus
+contained 10,000 unique mixed short strings totaling 1,277,394 UTF-8 bytes.
+All four paths produced exactly 403,011 tokens.
+
+| Implementation | Median MiB/s | Rows/s | Tokens/s | Peak RSS |
+|---|---:|---:|---:|---:|
+| Google `LocalTokenizer`, one call per row | 1.07 | 8,765 | 353,243 | 161 MiB |
+| Google `LocalTokenizer`, aggregate batch call | 0.319 | 2,618 | 105,507 | 186 MiB |
+| SentencePiece scalar, token IDs | 3.03 | 24,833 | 1,000,803 | 161 MiB |
+| SentencePiece batch, token IDs | 8.49 | 69,687 | 2,808,471 | 178 MiB |
+
+Direct SentencePiece batch tokenization was about 8.0x faster than calling
+Google's wrapper once per row and 26.6x faster than the wrapper's aggregate
+batch form on this case. The latter result is not a per-row API: it returns one
+total for the entire input. Source inspection indicates that the wrapper first
+converts and traverses SDK content objects, then calls SentencePiece `encode()`
+and sums materialized token-ID list lengths. The benchmark does not yet measure
+a Rust count-only implementation.
+
+The cached tokenizer initialized in approximately 0.12 seconds. The first
+uncached smoke run downloaded and verified a 4,689,074-byte artifact and spent
+0.85 seconds in tokenizer initialization; import time was approximately
+1.1 seconds on cached runs. Treat these as directional measurements because
+network, filesystem cache, process scheduling, and shared-host load affect
+them.
+
+Reproduce the correctness comparison and timings with the command in
+[benchmarking.md](benchmarking.md#geminigemma-3-local-baseline). For isolated
+peak-memory comparisons, repeat it once per `--implementation` value.
+
 ## Before and after byte-balanced parallelism
 
 | Implementation | Median MiB/s | Relative to Phase 1 |
