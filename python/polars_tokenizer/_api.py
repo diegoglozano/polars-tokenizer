@@ -8,11 +8,11 @@ from typing import Literal, TypeAlias
 import polars as pl
 from polars.plugins import register_plugin_function
 
-Tokenizer: TypeAlias = Literal["o200k_base"]
+Tokenizer: TypeAlias = Literal["cl100k_base", "o200k_base"]
 IntoExpr: TypeAlias = str | pl.Expr | pl.Series
 
 _PLUGIN_PATH = Path(__file__).parent
-_SUPPORTED = frozenset({"o200k_base"})
+_SUPPORTED = frozenset({"cl100k_base", "o200k_base"})
 
 
 def _validate_tokenizer(tokenizer: str) -> None:

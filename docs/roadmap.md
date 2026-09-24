@@ -9,6 +9,7 @@ estimation.
 
 ## Exact-counting performance
 
+- Implemented tokenizer definitions: `o200k_base` and `cl100k_base`.
 - Establish controlled-host throughput, scaling, CPU, and peak-memory
   baselines with the benchmark matrix.
 - Profile pre-tokenization, BPE merging, output construction, and Polars

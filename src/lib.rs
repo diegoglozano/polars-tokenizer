@@ -16,11 +16,14 @@ use pyo3_polars::export::polars_arrow::array::ValueSize;
 use pyo3_polars::export::polars_core::{POOL, THREAD_POOL};
 use rayon::prelude::*;
 use serde::Deserialize;
+use tiktoken::CoreBpe;
 
 #[global_allocator]
 static ALLOCATOR: PolarsAllocator = PolarsAllocator::new();
 
 const O200K_BASE: &str = "o200k_base";
+const CL100K_BASE: &str = "cl100k_base";
+const SUPPORTED_TOKENIZERS: &str = "cl100k_base, o200k_base";
 const PARALLEL_MIN_BYTES: usize = 512 * 1024;
 const TASKS_PER_THREAD: usize = 4;
 const CATEGORICAL_PARALLEL_MIN_CATEGORIES: usize = 4_096;
@@ -48,13 +51,46 @@ pub fn count_o200k(text: &str) -> usize {
         .count(text)
 }
 
-fn checked_count_o200k(text: &str) -> PolarsResult<u32> {
-    u32::try_from(count_o200k(text)).map_err(|_| {
+/// Count `cl100k_base` tokens without materializing token IDs.
+///
+/// Special-token-looking byte sequences are treated as ordinary text. The
+/// vocabulary is initialized once by the `tiktoken` crate and then shared.
+///
+/// # Panics
+///
+/// Panics only when the binary was built without the required
+/// `vocab-cl100k_base` Cargo feature, which is an internal build invariant.
+#[inline]
+#[must_use]
+pub fn count_cl100k(text: &str) -> usize {
+    tiktoken::get_encoding(CL100K_BASE)
+        .expect("cl100k_base vocabulary must be compiled in")
+        .count(text)
+}
+
+fn resolve_encoding(tokenizer: &str) -> PolarsResult<&'static CoreBpe> {
+    match tokenizer {
+        CL100K_BASE | O200K_BASE => tiktoken::get_encoding(tokenizer).ok_or_else(|| {
+            PolarsError::ComputeError(
+                format!("tokenizer {tokenizer:?} was not compiled into this build").into(),
+            )
+        }),
+        _ => Err(PolarsError::ComputeError(
+            format!(
+                "unsupported tokenizer {tokenizer:?}; supported tokenizers: {SUPPORTED_TOKENIZERS}"
+            )
+            .into(),
+        )),
+    }
+}
+
+fn checked_count(text: &str, encoding: &CoreBpe) -> PolarsResult<u32> {
+    u32::try_from(encoding.count(text)).map_err(|_| {
         PolarsError::ComputeError("token count exceeds the UInt32 output range".into())
     })
 }
 
-fn count_chunk(strings: &StringChunked) -> PolarsResult<UInt32Chunked> {
+fn count_chunk(strings: &StringChunked, encoding: &CoreBpe) -> PolarsResult<UInt32Chunked> {
     let mut output =
         PrimitiveChunkedBuilder::<UInt32Type>::new(strings.name().clone(), strings.len());
 
@@ -64,7 +100,7 @@ fn count_chunk(strings: &StringChunked) -> PolarsResult<UInt32Chunked> {
         match value {
             None => output.append_null(),
             Some(text) => {
-                output.append_value(checked_count_o200k(text)?);
+                output.append_value(checked_count(text, encoding)?);
             }
         }
     }
@@ -98,6 +134,7 @@ fn categorical_output<T: PolarsCategoricalType>(
 
 fn count_categorical_dense<T: PolarsCategoricalType>(
     categorical: &CategoricalChunked<T>,
+    encoding: &CoreBpe,
 ) -> PolarsResult<UInt32Chunked> {
     let physical = categorical.physical();
     let mapping = categorical.get_mapping();
@@ -123,7 +160,7 @@ fn count_categorical_dense<T: PolarsCategoricalType>(
             let text = mapping.cat_to_str(category).ok_or_else(|| {
                 PolarsError::ComputeError("categorical value is missing from its mapping".into())
             })?;
-            counts[index] = checked_count_o200k(text)?;
+            counts[index] = checked_count(text, encoding)?;
             seen[index] = true;
         }
         output.append_value(counts[index]);
@@ -134,6 +171,7 @@ fn count_categorical_dense<T: PolarsCategoricalType>(
 
 fn count_categorical_sparse<T: PolarsCategoricalType>(
     categorical: &CategoricalChunked<T>,
+    encoding: &CoreBpe,
 ) -> PolarsResult<UInt32Chunked> {
     let physical = categorical.physical();
     let mapping = categorical.get_mapping();
@@ -153,7 +191,7 @@ fn count_categorical_sparse<T: PolarsCategoricalType>(
             let text = mapping.cat_to_str(category).ok_or_else(|| {
                 PolarsError::ComputeError("categorical value is missing from its mapping".into())
             })?;
-            let count = checked_count_o200k(text)?;
+            let count = checked_count(text, encoding)?;
             counts.insert(category, count);
             count
         };
@@ -165,6 +203,7 @@ fn count_categorical_sparse<T: PolarsCategoricalType>(
 
 fn count_categorical_parallel<T: PolarsCategoricalType>(
     categorical: &CategoricalChunked<T>,
+    encoding: &CoreBpe,
 ) -> PolarsResult<UInt32Chunked> {
     let physical = categorical.physical();
     let mapping = categorical.get_mapping();
@@ -194,7 +233,7 @@ fn count_categorical_parallel<T: PolarsCategoricalType>(
             })
     })?;
     if total_bytes < PARALLEL_MIN_BYTES {
-        return count_categorical_dense(categorical);
+        return count_categorical_dense(categorical, encoding);
     }
 
     let token_counts = POOL.install(|| {
@@ -205,7 +244,7 @@ fn count_categorical_parallel<T: PolarsCategoricalType>(
                         "categorical value is missing from its mapping".into(),
                     )
                 })?;
-                checked_count_o200k(text)
+                checked_count(text, encoding)
             })
             .collect::<PolarsResult<Vec<_>>>()
     })?;
@@ -218,6 +257,7 @@ fn count_categorical_parallel<T: PolarsCategoricalType>(
 
 fn count_categorical<T: PolarsCategoricalType>(
     categorical: &CategoricalChunked<T>,
+    encoding: &CoreBpe,
     allow_parallel: bool,
 ) -> PolarsResult<UInt32Chunked> {
     let mapping_len = categorical.get_mapping().num_cats_upper_bound();
@@ -226,11 +266,11 @@ fn count_categorical<T: PolarsCategoricalType>(
         .saturating_mul(CATEGORICAL_DENSE_RATIO)
         .max(1_024);
     if mapping_len > dense_limit {
-        count_categorical_sparse(categorical)
+        count_categorical_sparse(categorical, encoding)
     } else if allow_parallel && mapping_len >= CATEGORICAL_PARALLEL_MIN_CATEGORIES {
-        count_categorical_parallel(categorical)
+        count_categorical_parallel(categorical, encoding)
     } else {
-        count_categorical_dense(categorical)
+        count_categorical_dense(categorical, encoding)
     }
 }
 
@@ -274,7 +314,11 @@ fn byte_balanced_ranges(
     ranges
 }
 
-fn count_parallel(strings: &StringChunked, total_bytes: usize) -> PolarsResult<UInt32Chunked> {
+fn count_parallel(
+    strings: &StringChunked,
+    total_bytes: usize,
+    encoding: &CoreBpe,
+) -> PolarsResult<UInt32Chunked> {
     let n_threads = THREAD_POOL.current_num_threads();
     let max_parts = n_threads.saturating_mul(TASKS_PER_THREAD).max(1);
     let ranges = byte_balanced_ranges(strings, total_bytes, max_parts);
@@ -286,7 +330,7 @@ fn count_parallel(strings: &StringChunked, total_bytes: usize) -> PolarsResult<U
                 let offset = i64::try_from(offset).map_err(|_| {
                     PolarsError::ComputeError("row offset exceeds the Int64 range".into())
                 })?;
-                count_chunk(&strings.slice(offset, len))
+                count_chunk(&strings.slice(offset, len), encoding)
             })
             .collect::<PolarsResult<Vec<_>>>()
     })?;
@@ -306,15 +350,7 @@ fn token_count(
     context: CallerContext,
     kwargs: CountKwargs,
 ) -> PolarsResult<Series> {
-    if kwargs.tokenizer != O200K_BASE {
-        return Err(PolarsError::ComputeError(
-            format!(
-                "unsupported tokenizer {:?}; supported tokenizers: {O200K_BASE}",
-                kwargs.tokenizer
-            )
-            .into(),
-        ));
-    }
+    let encoding = resolve_encoding(&kwargs.tokenizer)?;
 
     let input = &inputs[0];
     let output = match input.dtype() {
@@ -325,15 +361,16 @@ fn token_count(
                 && THREAD_POOL.current_num_threads() > 1
                 && total_bytes >= PARALLEL_MIN_BYTES;
             if should_parallelize {
-                count_parallel(strings, total_bytes)?
+                count_parallel(strings, total_bytes, encoding)?
             } else {
-                count_chunk(strings)?
+                count_chunk(strings, encoding)?
             }
         }
         DataType::Categorical(_, _) | DataType::Enum(_, _) => {
             with_match_categorical_physical_type!(input.dtype().cat_physical()?, |$C| {
                 count_categorical(
                     input.cat::<$C>()?,
+                    encoding,
                     !context.parallel() && THREAD_POOL.current_num_threads() > 1,
                 )
             })?
@@ -366,6 +403,21 @@ mod tests {
 
         for (text, expected) in cases {
             assert_eq!(count_o200k(text), expected, "input: {text:?}");
+        }
+    }
+
+    #[test]
+    fn known_cl100k_counts() {
+        let cases = [
+            ("", 0),
+            ("hello world", 2),
+            ("hello\0world", 3),
+            ("你好，世界", 6),
+            ("e\u{301}", 2),
+        ];
+
+        for (text, expected) in cases {
+            assert_eq!(count_cl100k(text), expected, "input: {text:?}");
         }
     }
 
@@ -423,8 +475,9 @@ mod tests {
             values.collect::<Vec<_>>().iter().map(Option::as_deref),
         );
 
-        let sequential = count_chunk(&strings).unwrap();
-        let parallel = count_parallel(&strings, strings.get_values_size()).unwrap();
+        let encoding = resolve_encoding(O200K_BASE).unwrap();
+        let sequential = count_chunk(&strings, encoding).unwrap();
+        let parallel = count_parallel(&strings, strings.get_values_size(), encoding).unwrap();
         assert!(sequential.into_iter().eq(&parallel));
     }
 }

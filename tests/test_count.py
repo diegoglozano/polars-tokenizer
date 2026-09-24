@@ -7,11 +7,11 @@ import tiktoken
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-ENCODING = tiktoken.get_encoding("o200k_base")
+ENCODINGS = {name: tiktoken.get_encoding(name) for name in ("cl100k_base", "o200k_base")}
 
 
-def reference_count(text: str) -> int:
-    return len(ENCODING.encode(text, disallowed_special=()))
+def reference_count(text: str, tokenizer: str = "o200k_base") -> int:
+    return len(ENCODINGS[tokenizer].encode(text, disallowed_special=()))
 
 
 @pytest.mark.parametrize(
@@ -36,6 +36,31 @@ def test_exact_reference_cases(text: str) -> None:
         pl.col("text").tokens.count("o200k_base")  # ty: ignore[unresolved-attribute]
     )
     assert result.item() == reference_count(text)
+    assert result.schema["text"] == pl.UInt32
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        "hello world",
+        "hello\0world",
+        "line one\r\nline two",
+        "e\N{COMBINING ACUTE ACCENT}",
+        "\N{ZERO WIDTH SPACE}\N{ZERO WIDTH JOINER}",
+        "你好，世界",
+        "مرحبا بالعالم",
+        "👋🏽🌍🧑‍💻",
+        "<|endoftext|>",
+        '{"number": 1234567890, "ok": true}',
+        'fn main() { println!("hello"); }',
+    ],
+)
+def test_cl100k_exact_reference_cases(text: str) -> None:
+    result = pl.DataFrame({"text": [text]}).select(
+        pl.col("text").tokens.count("cl100k_base")  # ty: ignore[unresolved-attribute]
+    )
+    assert result.item() == reference_count(text, "cl100k_base")
     assert result.schema["text"] == pl.UInt32
 
 
@@ -129,6 +154,20 @@ def test_categorical_lazy_streaming() -> None:
     assert result.to_series().to_list() == expected
 
 
+def test_cl100k_categorical_lazy_streaming() -> None:
+    values = ["repeat", "repeat", None, "different", "你好，世界"]
+    frame = pl.DataFrame({"text": values}).with_columns(pl.col("text").cast(pl.Categorical))
+    expected = [
+        reference_count(value, "cl100k_base") if value is not None else None for value in values
+    ]
+    result = (
+        frame.lazy()
+        .select(tokens.count("text", tokenizer="cl100k_base"))
+        .collect(engine="streaming")
+    )
+    assert result.to_series().to_list() == expected
+
+
 def test_wide_categorical_ids_match_reference() -> None:
     values = [f"category-{index}" for index in range(66_000)]
     frame = pl.DataFrame({"text": values}).with_columns(pl.col("text").cast(pl.Categorical))
@@ -148,7 +187,7 @@ def test_unsupported_tokenizer_fails_early() -> None:
     with pytest.raises(ValueError, match="unsupported tokenizer"):
         tokens.count(
             "text",
-            tokenizer="cl100k_base",  # ty: ignore[invalid-argument-type]
+            tokenizer="p50k_base",  # ty: ignore[invalid-argument-type]
         )
 
 
@@ -164,3 +203,12 @@ def test_non_string_column_errors() -> None:
 def test_arbitrary_unicode_matches_reference(text: str) -> None:
     actual = pl.DataFrame({"text": [text]}).select(tokens.count("text")).item()
     assert actual == reference_count(text)
+
+
+@settings(max_examples=250, deadline=None)
+@given(st.text(max_size=2_048))
+def test_cl100k_arbitrary_unicode_matches_reference(text: str) -> None:
+    actual = (
+        pl.DataFrame({"text": [text]}).select(tokens.count("text", tokenizer="cl100k_base")).item()
+    )
+    assert actual == reference_count(text, "cl100k_base")
