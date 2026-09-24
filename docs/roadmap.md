@@ -132,7 +132,7 @@ snapshot. Before broadening that API:
 - [x] Store price, currency, unit, provider, snapshot date, and registry
   version.
 - [x] Pin pricing snapshots so results cannot change silently.
-- [ ] Allow an explicit caller-supplied pricing override for private or negotiated
+- [x] Allow an explicit caller-supplied pricing override for private or negotiated
   prices.
 - [x] Resolve the model to its tokenizer independently from its price metadata.
 - [ ] Report the token-count mode (`exact` or `estimate`) alongside the result.
