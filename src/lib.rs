@@ -1,5 +1,12 @@
 //! Native count-only token expressions for Polars.
 
+// The Gemma 3 feasibility kernel is intentionally not wired into the public
+// Polars expression until full reference parity and artifact licensing are
+// established.
+#[cfg(feature = "gemma3-prototype")]
+#[doc(hidden)]
+pub mod sentencepiece_bpe;
+
 use std::collections::HashMap;
 
 use polars::prelude::*;
