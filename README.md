@@ -23,6 +23,19 @@ Aliases are exact, not prefix matches, and are pinned by
 `polars_tokenizer.MODEL_REGISTRY_VERSION`. Pass a tokenizer when reproducibility
 should not depend on a provider model name.
 
+Raw-text cost estimation is available for models with a pinned price snapshot:
+
+```python
+costs = df.with_columns(
+    pl.col("text").tokens.estimate_cost(model="gpt-5", category="input").alias("estimated_cost_usd")
+)
+```
+
+The current price metadata is inspectable with `price_info("gpt-5")` and is
+pinned by `PRICE_REGISTRY_VERSION`. Cost expressions perform no network access.
+They count only the supplied raw text and exclude request wrappers, tools,
+images, audio, and other provider-side accounting.
+
 The functional form is also available and is friendlier to static type
 checkers:
 
