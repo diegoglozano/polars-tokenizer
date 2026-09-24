@@ -26,5 +26,5 @@ jobs:
       - run: uv run --no-sync ruff format --check .
       - run: uv run --no-sync ty check
       - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test --all-targets
+      - run: cargo clippy --all-targets --features gemma3-prototype -- -D warnings
+      - run: cargo test --all-targets --features gemma3-prototype

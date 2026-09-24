@@ -133,7 +133,7 @@ driven by profiles and benchmark data in this order:
 4. add a separately measured estimator;
 5. add `cl100k_base` and model aliases without coupling provider names to the
    tokenizer engine;
-6. evaluate a pure-Rust, count-only SentencePiece/Unigram path for Google's
+6. evaluate a pure-Rust, count-only SentencePiece BPE path for Google's
    pinned Gemma tokenizer definitions, with Gemini names kept as model aliases;
 7. add model-based raw-text cost estimation using versioned pricing snapshots.
 
@@ -145,6 +145,8 @@ pricing updates will never silently alter a pinned calculation. See
 
 See [docs/architecture.md](docs/architecture.md) for the design boundaries and
 [docs/benchmarking.md](docs/benchmarking.md) for the benchmark protocol.
+The experimental Gemma 3 kernel and its parity workflow are documented in
+[docs/gemma3-prototype.md](docs/gemma3-prototype.md).
 
 ## License
 

@@ -49,6 +49,11 @@ substantial allocation and Python/API overhead on large columns. Newer mapped
 models use a separate Gemma 4 Hugging Face tokenizer path and must be evaluated
 independently.
 
+The pinned Gemma 3 artifact has now been inspected and is a `SentencePiece`
+BPE model, not a Unigram model. See
+[the prototype notes](gemma3-prototype.md) for its validated configuration and
+the reproducible oracle workflow.
+
 Before adding public Gemini support:
 
 - [ ] Benchmark Google's local tokenizer as shipped, its underlying
@@ -58,10 +63,15 @@ Before adding public Gemini support:
 - [ ] Treat `gemma3`/`gemma4` as versioned tokenizer definitions and Gemini
   names as model aliases. Do not put Gemini-specific branching in the tokenizer
   kernel.
-- [ ] Prototype a pure-Rust, per-value, count-only SentencePiece/Unigram kernel
-  for the pinned Gemma 3 model without materializing token IDs.
-- [ ] Preserve the tokenizer model's configured normalization and byte-fallback
-  behavior exactly; do not apply an independent Unicode normalization pass.
+- [x] Prototype a pure-Rust, per-value, count-only SentencePiece BPE kernel
+  for the pinned Gemma 3 model without materializing token IDs. The prototype
+  is isolated behind the `gemma3-prototype` Cargo feature and is not yet a
+  public Polars expression.
+- [x] Preserve the pinned model's identity normalization, user-defined-symbol
+  matching, ASCII-space escaping, and byte-fallback behavior exactly; do not
+  apply an independent Unicode normalization pass. A 20,013-string initial
+  oracle (3,321,397 bytes, 1,663,237 tokens) matched Google's local
+  implementation.
 - [ ] Compare against the official local implementation on the complete
   multilingual/fuzz corpus and against remote `countTokens` for stable model
   IDs. Publish any raw-text versus request-accounting differences.

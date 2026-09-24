@@ -43,6 +43,27 @@ Reproduce the correctness comparison and timings with the command in
 [benchmarking.md](benchmarking.md#geminigemma-3-local-baseline). For isolated
 peak-memory comparisons, repeat it once per `--implementation` value.
 
+### Pure-Rust Gemma 3 count-only prototype
+
+The first Rust feasibility kernel was then measured on a deterministic
+20,013-row oracle containing 3,321,397 UTF-8 bytes and 1,663,237 tokens. Every
+row matched Google's pinned Gemma 3 tokenizer. This corpus is more
+Unicode-heavy than the 10,000-row baseline above, so only results within this
+table are directly comparable.
+
+| Implementation | Median MiB/s | Rows/s | Tokens/s | Relative |
+|---|---:|---:|---:|---:|
+| Rust count-only prototype | 17.4 | 110,000 | 9,140,000 | 1.00x |
+| SentencePiece batch, token IDs | 7.64 | 48,268 | 4,011,430 | 0.44x |
+| SentencePiece scalar, token IDs | 2.50 | 15,780 | 1,311,424 | 0.14x |
+
+The count-only path was 2.28x faster than direct batch tokenization and 6.97x
+faster than scalar tokenization on this corpus. Model parsing, validation, and
+index construction took about 94 ms. The benchmark remains single-threaded and
+below Polars; Arrow integration, workload partitioning, and memory measurement
+are the next gates. See [gemma3-prototype.md](gemma3-prototype.md) for the
+reproducible oracle and benchmark commands.
+
 ## Before and after byte-balanced parallelism
 
 | Implementation | Median MiB/s | Relative to Phase 1 |
