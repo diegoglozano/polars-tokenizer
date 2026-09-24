@@ -3,6 +3,10 @@
 The order below keeps performance work evidence-driven and prevents provider
 catalog concerns from leaking into the exact tokenizer kernel.
 
+See the [provider capability matrix](provider-support.md) for the current
+per-provider status of exact counting, estimated counting, and model-based cost
+estimation.
+
 ## Exact-counting performance
 
 - Establish controlled-host throughput, scaling, CPU, and peak-memory

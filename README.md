@@ -145,6 +145,9 @@ pricing updates will never silently alter a pinned calculation. See
 
 See [docs/architecture.md](docs/architecture.md) for the design boundaries and
 [docs/benchmarking.md](docs/benchmarking.md) for the benchmark protocol.
+The [provider capability matrix](docs/provider-support.md) tracks exact,
+estimated, and cost-estimation support without conflating models with
+tokenizers or serving providers.
 The experimental Gemma 3 kernel and its parity workflow are documented in
 [docs/gemma3-prototype.md](docs/gemma3-prototype.md).
 
