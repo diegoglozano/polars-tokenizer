@@ -1,9 +1,9 @@
 # polars-tokenizer
 
 `polars-tokenizer` is a native Polars expression plugin for exact, count-only
-tokenization of string, categorical, and enum columns. The current foundation
-supports one operation with `o200k_base` and `cl100k_base` tokenizer
-definitions:
+tokenization of string, categorical, and enum columns. It exposes exact counts
+and model-based raw-text cost estimates. Exact counting currently supports the
+`o200k_base` and `cl100k_base` tokenizer definitions:
 
 ```python
 import polars as pl
@@ -159,25 +159,26 @@ property-generated Unicode strings. Inputs are never normalized.
 
 ## Scope and roadmap
 
-This repository implements the exact-counting foundation only. In particular,
-`estimate`, model aliases, cache controls, fused aggregations, cost estimation,
-and DataFrame-level analytics are not exposed yet. The next changes should be
-driven by profiles and benchmark data in this order:
+The public surface currently includes exact counting, versioned OpenAI model
+aliases, pinned GPT-5 cost estimation, and caller-supplied price overrides.
+Token-count estimation, cache controls, fused aggregations, and DataFrame-level
+analytics are not exposed yet. The next changes should be driven by profiles
+and benchmark data in this order:
 
 1. establish controlled-host performance and memory baselines;
 2. benchmark bounded whole-value caches for non-categorical strings;
 3. optimize exceptionally large individual rows without oversubscription;
 4. add a separately measured estimator;
-5. add model aliases without coupling provider names to the tokenizer engine;
-6. evaluate a pure-Rust, count-only SentencePiece BPE path for Google's
-   pinned Gemma tokenizer definitions, with Gemini names kept as model aliases;
-7. add model-based raw-text cost estimation using versioned pricing snapshots.
+5. expand dated model-price snapshots without coupling provider names to the
+   tokenizer engine;
+6. move the pure-Rust Gemma 3 prototype toward public Polars integration after
+   broader parity and artifact-licensing checks.
 
-Cost estimation will accept a **model**, not a tokenizer. A model registry will
-resolve both its tokenizer and its input/cached-input/output prices in a
-higher-level layer. The tokenizer kernel will remain provider-agnostic, and
-pricing updates will never silently alter a pinned calculation. See
-[docs/roadmap.md](docs/roadmap.md) for the proposed boundary.
+Cost estimation accepts a **model**, not a tokenizer. A higher-level registry
+resolves its tokenizer independently from dated input/cached-input/output price
+snapshots. The tokenizer kernel remains provider-agnostic, and pricing updates
+never silently alter a pinned calculation. See
+[docs/roadmap.md](docs/roadmap.md) for the boundary and remaining work.
 
 See [docs/architecture.md](docs/architecture.md) for the design boundaries and
 [docs/benchmarking.md](docs/benchmarking.md) for the benchmark protocol.
