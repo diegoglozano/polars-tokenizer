@@ -10,6 +10,25 @@ Versions: Polars 1.36.1, GigaToken 0.10.0, and the official `o200k_base` rank
 file with SHA-256
 `446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d`.
 
+## `cl100k_base` exact-kernel baseline
+
+After adding `cl100k_base`, the count-only Criterion benchmark exercised both
+compiled tokenizer definitions on the same repeated mixed-language sample.
+These are single-string kernel measurements on the shared Intel N95 host, not
+end-to-end Polars results.
+
+| Logical size | `o200k_base` MiB/s | `cl100k_base` MiB/s |
+|---:|---:|---:|
+| 32 B | 125.5 | 125.2 |
+| 256 B | 125.8 | 128.1 |
+| 4 KiB | 127.0 | 129.1 |
+| 128 KiB | 126.6 | 127.7 |
+
+Criterion detected no statistically significant `o200k_base` regression
+against the preceding baseline. The shared expression path resolves one
+`CoreBpe` before processing rows, so supporting the second tokenizer does not
+add tokenizer-name dispatch inside the row loop.
+
 ## Google local Gemma 3 baseline
 
 An isolated exploratory run measured Google Gen AI 2.11.0, SentencePiece

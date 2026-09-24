@@ -2,7 +2,8 @@
 
 `polars-tokenizer` is a native Polars expression plugin for exact, count-only
 tokenization of string, categorical, and enum columns. The current foundation
-deliberately supports one operation and one encoding:
+supports one operation with `o200k_base` and `cl100k_base` tokenizer
+definitions:
 
 ```python
 import polars as pl
@@ -34,8 +35,8 @@ df.select(tokens.count(pl.col("text"), tokenizer="o200k_base"))
 - The function is registered as elementwise and uses Polars' own thread pool
   for byte-balanced work above 512 KiB. It stays sequential when the caller is
   already parallel, preventing nested oversubscription.
-- `o200k_base` vocabulary data is compiled into the wheel and pinned by
-  `Cargo.lock`; execution performs no network access.
+- `o200k_base` and `cl100k_base` vocabulary data are compiled into the wheel
+  and pinned by `Cargo.lock`; execution performs no network access.
 - Special-token-looking substrings are ordinary raw text. This matches
   `tiktoken.encode(text, disallowed_special=())`, not request/chat accounting.
 
@@ -107,11 +108,11 @@ the versioned `uv` command and measurement boundaries.
 
 ## Correctness contract
 
-For every valid Python string `s`:
+For every valid Python string `s` and supported tokenizer `t`:
 
 ```text
-polars_tokenizer.count(s, "o200k_base")
-    == len(tiktoken.get_encoding("o200k_base").encode(
+polars_tokenizer.count(s, tokenizer=t)
+    == len(tiktoken.get_encoding(t).encode(
            s, disallowed_special=()
        ))
 ```
@@ -131,8 +132,7 @@ driven by profiles and benchmark data in this order:
 2. benchmark bounded whole-value caches for non-categorical strings;
 3. optimize exceptionally large individual rows without oversubscription;
 4. add a separately measured estimator;
-5. add `cl100k_base` and model aliases without coupling provider names to the
-   tokenizer engine;
+5. add model aliases without coupling provider names to the tokenizer engine;
 6. evaluate a pure-Rust, count-only SentencePiece BPE path for Google's
    pinned Gemma tokenizer definitions, with Gemini names kept as model aliases;
 7. add model-based raw-text cost estimation using versioned pricing snapshots.
