@@ -8,6 +8,7 @@ from typing import TypeAlias
 import polars as pl
 from polars.plugins import register_plugin_function
 
+from polars_tokenizer._pricing import BillingCategory, PricedModel, price_info
 from polars_tokenizer._registry import Model, Tokenizer, resolve_model
 
 IntoExpr: TypeAlias = str | pl.Expr | pl.Series
@@ -55,6 +56,21 @@ def count(
     )
 
 
+def estimate_cost(
+    expr: IntoExpr,
+    *,
+    model: PricedModel,
+    category: BillingCategory = "input",
+) -> pl.Expr:
+    """Estimate raw-text cost in USD using exact counts and pinned pricing.
+
+    This excludes chat wrappers, tools, images, audio, and every other piece of
+    request-level accounting. Null input produces null output.
+    """
+    price = price_info(model, category)
+    return count(expr, model=model).cast(pl.Float64) * float(price.price_per_token)
+
+
 @pl.api.register_expr_namespace("tokens")
 class TokenExprNameSpace:
     """Token analytics methods for :class:`polars.Expr`."""
@@ -70,3 +86,12 @@ class TokenExprNameSpace:
     ) -> pl.Expr:
         """Return exact token counts for this string expression."""
         return count(self._expr, tokenizer=tokenizer, model=model)
+
+    def estimate_cost(
+        self,
+        *,
+        model: PricedModel,
+        category: BillingCategory = "input",
+    ) -> pl.Expr:
+        """Estimate raw-text cost in USD from exact local token counts."""
+        return estimate_cost(self._expr, model=model, category=category)

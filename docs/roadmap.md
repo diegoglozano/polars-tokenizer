@@ -125,20 +125,21 @@ pl.col("text").tokens.estimate_cost(
 )
 ```
 
-Before exposing that API:
+Initial GPT-5 support uses exact local token counts and a dated OpenAI USD
+snapshot. Before broadening that API:
 
-- [ ] Define input, cached-input, and output categories explicitly.
-- [ ] Store price, currency, unit, provider, effective date, and registry
+- [x] Define input, cached-input, and output categories explicitly.
+- [x] Store price, currency, unit, provider, snapshot date, and registry
   version.
-- [ ] Pin pricing snapshots so results cannot change silently.
+- [x] Pin pricing snapshots so results cannot change silently.
 - [ ] Allow an explicit caller-supplied pricing override for private or negotiated
   prices.
-- [ ] Resolve the model to its tokenizer independently from its price metadata.
+- [x] Resolve the model to its tokenizer independently from its price metadata.
 - [ ] Report the token-count mode (`exact` or `estimate`) alongside the result.
-- [ ] Keep raw-text cost estimates distinct from full request costs, which may also
+- [x] Keep raw-text cost estimates distinct from full request costs, which may also
   include wrappers, tools, images, audio, or provider serialization.
 - [ ] Test boundary dates and unknown/retired model behavior.
-- [ ] Avoid runtime network access in DataFrame expressions.
+- [x] Avoid runtime network access in DataFrame expressions.
 
 The initial operation should estimate the cost of the provided raw text in one
 declared billing category. Full request accounting remains a separate future
