@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Literal, TypeAlias
 
 from polars_tokenizer._registry import Model, resolve_model
@@ -11,6 +11,7 @@ from polars_tokenizer._registry import Model, resolve_model
 BillingCategory: TypeAlias = Literal["cached_input", "input", "output"]
 Currency: TypeAlias = Literal["USD"]
 PricedModel: TypeAlias = Literal["gpt-5"]
+UsdPerMillionOverride: TypeAlias = Decimal | int | float
 
 PRICE_REGISTRY_VERSION = "openai-2026-09-24"
 _UNIT_TOKENS = 1_000_000
@@ -73,3 +74,31 @@ def price_info(model: Model, category: BillingCategory = "input") -> PriceInfo:
         registry_version=PRICE_REGISTRY_VERSION,
         source_url="https://developers.openai.com/api/docs/models/gpt-5",
     )
+
+
+def resolve_price_per_token(
+    model: Model,
+    category: BillingCategory,
+    usd_per_million_tokens: UsdPerMillionOverride | None,
+) -> Decimal:
+    """Resolve a pinned or caller-supplied rate to USD per token."""
+    if usd_per_million_tokens is None:
+        return price_info(model, category).price_per_token
+
+    resolve_model(model)
+    if category not in _GPT5_PRICES:
+        supported = ", ".join(_GPT5_PRICES)
+        msg = f"unsupported billing category {category!r}; supported categories: {supported}"
+        raise ValueError(msg)
+    if isinstance(usd_per_million_tokens, bool):
+        msg = "usd_per_million_tokens must be a finite, non-negative number"
+        raise ValueError(msg)
+    try:
+        override = Decimal(str(usd_per_million_tokens))
+    except (InvalidOperation, ValueError):
+        msg = "usd_per_million_tokens must be a finite, non-negative number"
+        raise ValueError(msg) from None
+    if not override.is_finite() or override < 0:
+        msg = "usd_per_million_tokens must be a finite, non-negative number"
+        raise ValueError(msg)
+    return override / _UNIT_TOKENS

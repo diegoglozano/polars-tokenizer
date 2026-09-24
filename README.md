@@ -36,6 +36,19 @@ pinned by `PRICE_REGISTRY_VERSION`. Cost expressions perform no network access.
 They count only the supplied raw text and exclude request wrappers, tools,
 images, audio, and other provider-side accounting.
 
+Private or negotiated rates can be supplied explicitly without confusing a
+model with a tokenizer:
+
+```python
+costs = df.select(
+    pl.col("text").tokens.estimate_cost(
+        model="gpt-4",
+        category="input",
+        usd_per_million_tokens=3.50,
+    )
+)
+```
+
 The functional form is also available and is friendlier to static type
 checkers:
 

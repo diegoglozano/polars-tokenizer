@@ -6,6 +6,7 @@ from polars_tokenizer._pricing import (
     BillingCategory,
     PricedModel,
     PriceInfo,
+    UsdPerMillionOverride,
     price_info,
 )
 from polars_tokenizer._registry import MODEL_REGISTRY_VERSION, Model, ModelInfo, Tokenizer
@@ -20,6 +21,7 @@ __all__ = [
     "PricedModel",
     "TokenExprNameSpace",
     "Tokenizer",
+    "UsdPerMillionOverride",
     "count",
     "estimate_cost",
     "price_info",

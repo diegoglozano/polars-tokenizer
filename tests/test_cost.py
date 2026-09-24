@@ -66,7 +66,41 @@ def test_known_model_without_price_snapshot_fails_early() -> None:
     with pytest.raises(ValueError, match="no price snapshot"):
         tokens.estimate_cost(
             "text",
-            model="gpt-4",  # ty: ignore[invalid-argument-type]
+            model="gpt-4",
+        )
+
+
+def test_caller_price_override_supports_known_unpriced_model() -> None:
+    result = pl.DataFrame({"text": ["hello world", None]}).select(
+        tokens.estimate_cost(
+            "text",
+            model="gpt-4",
+            category="input",
+            usd_per_million_tokens=Decimal("3.50"),
+        ).alias("cost_usd")
+    )
+    assert result["cost_usd"].to_list() == pytest.approx([2 * 3.5 / 1_000_000, None])
+
+
+@pytest.mark.parametrize(
+    "rate",
+    [-1, float("nan"), float("inf"), Decimal("NaN"), True],
+)
+def test_invalid_caller_price_override_fails_early(rate: object) -> None:
+    with pytest.raises(ValueError, match="finite, non-negative"):
+        tokens.estimate_cost(
+            "text",
+            model="gpt-5",
+            usd_per_million_tokens=rate,  # ty: ignore[invalid-argument-type]
+        )
+
+
+def test_unknown_model_with_price_override_still_fails() -> None:
+    with pytest.raises(ValueError, match=tokens.MODEL_REGISTRY_VERSION):
+        tokens.estimate_cost(
+            "text",
+            model="future-model",  # ty: ignore[invalid-argument-type]
+            usd_per_million_tokens=1.0,
         )
 
 
