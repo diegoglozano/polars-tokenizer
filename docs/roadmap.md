@@ -43,6 +43,14 @@ Conceptually:
 model identifier -> model metadata -> tokenizer identifier -> count kernel
 ```
 
+Implemented: the Python-facing API has a dated registry of exact OpenAI model
+aliases for the locally supported tokenizers. `count(model="gpt-5")` resolves
+to `o200k_base` before crossing the plugin boundary. The registry intentionally
+does not use prefix matching: a newly released model must be reviewed and added
+to a new registry version rather than silently inheriting an older mapping.
+The initial mappings reproduce the supported subset of the pinned `tiktoken`
+0.12.0 registry without importing `tiktoken` at runtime.
+
 ## Gemini local tokenizers (investigation TODO)
 
 Google's experimental Python `LocalTokenizer` currently gives us a promising

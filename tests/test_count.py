@@ -168,6 +168,62 @@ def test_cl100k_categorical_lazy_streaming() -> None:
     assert result.to_series().to_list() == expected
 
 
+@pytest.mark.parametrize(
+    ("model", "tokenizer"),
+    [
+        ("gpt-5", "o200k_base"),
+        ("gpt-4o", "o200k_base"),
+        ("gpt-4", "cl100k_base"),
+        ("text-embedding-3-small", "cl100k_base"),
+    ],
+)
+def test_model_alias_matches_pinned_tokenizer(model: str, tokenizer: str) -> None:
+    values = ["hello world", "你好，世界", None, ""]
+    frame = pl.DataFrame({"text": values})
+
+    by_model = (
+        frame.select(
+            tokens.count(
+                "text",
+                model=model,  # ty: ignore[invalid-argument-type]
+            )
+        )
+        .to_series()
+        .to_list()
+    )
+    by_tokenizer = (
+        frame.select(
+            tokens.count(
+                "text",
+                tokenizer=tokenizer,  # ty: ignore[invalid-argument-type]
+            )
+        )
+        .to_series()
+        .to_list()
+    )
+    assert by_model == by_tokenizer
+
+
+def test_model_alias_expr_namespace() -> None:
+    result = pl.DataFrame({"text": ["hello world"]}).select(
+        pl.col("text").tokens.count(model="gpt-5")  # ty: ignore[unresolved-attribute]
+    )
+    assert result.item() == reference_count("hello world")
+
+
+def test_tokenizer_and_model_are_mutually_exclusive() -> None:
+    with pytest.raises(ValueError, match="either tokenizer or model"):
+        tokens.count("text", tokenizer="o200k_base", model="gpt-5")
+
+
+def test_unknown_model_fails_early_with_registry_version() -> None:
+    with pytest.raises(ValueError, match=tokens.MODEL_REGISTRY_VERSION):
+        tokens.count(
+            "text",
+            model="future-model",  # ty: ignore[invalid-argument-type]
+        )
+
+
 def test_wide_categorical_ids_match_reference() -> None:
     values = [f"category-{index}" for index in range(66_000)]
     frame = pl.DataFrame({"text": values}).with_columns(pl.col("text").cast(pl.Categorical))

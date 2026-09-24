@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, TypeAlias
+from typing import TypeAlias
 
 import polars as pl
 from polars.plugins import register_plugin_function
 
-Tokenizer: TypeAlias = Literal["cl100k_base", "o200k_base"]
+from polars_tokenizer._registry import Model, Tokenizer, resolve_model
+
 IntoExpr: TypeAlias = str | pl.Expr | pl.Series
 
 _PLUGIN_PATH = Path(__file__).parent
@@ -22,18 +23,34 @@ def _validate_tokenizer(tokenizer: str) -> None:
         raise ValueError(msg)
 
 
-def count(expr: IntoExpr, tokenizer: Tokenizer = "o200k_base") -> pl.Expr:
+def _resolve_tokenizer(tokenizer: Tokenizer | None, model: Model | None) -> Tokenizer:
+    if tokenizer is not None and model is not None:
+        msg = "pass either tokenizer or model, not both"
+        raise ValueError(msg)
+    if model is not None:
+        return resolve_model(model).tokenizer
+    resolved = "o200k_base" if tokenizer is None else tokenizer
+    _validate_tokenizer(resolved)
+    return resolved
+
+
+def count(
+    expr: IntoExpr,
+    tokenizer: Tokenizer | None = None,
+    *,
+    model: Model | None = None,
+) -> pl.Expr:
     """Return the exact raw-text token count as a UInt32 expression.
 
     Null input produces null output. Special-token-looking substrings are
     treated as ordinary text; no Unicode normalization is applied.
     """
-    _validate_tokenizer(tokenizer)
+    resolved = _resolve_tokenizer(tokenizer, model)
     return register_plugin_function(
         plugin_path=_PLUGIN_PATH,
         args=[expr],
         function_name="token_count",
-        kwargs={"tokenizer": tokenizer},
+        kwargs={"tokenizer": resolved},
         is_elementwise=True,
     )
 
@@ -45,6 +62,11 @@ class TokenExprNameSpace:
     def __init__(self, expr: pl.Expr) -> None:
         self._expr = expr
 
-    def count(self, tokenizer: Tokenizer = "o200k_base") -> pl.Expr:
+    def count(
+        self,
+        tokenizer: Tokenizer | None = None,
+        *,
+        model: Model | None = None,
+    ) -> pl.Expr:
         """Return exact token counts for this string expression."""
-        return count(self._expr, tokenizer=tokenizer)
+        return count(self._expr, tokenizer=tokenizer, model=model)

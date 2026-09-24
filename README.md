@@ -13,6 +13,16 @@ df = pl.DataFrame({"text": ["hello world", None, ""]})
 out = df.with_columns(pl.col("text").tokens.count("o200k_base").alias("token_count"))
 ```
 
+Provider model aliases are resolved outside the tokenizer kernel:
+
+```python
+out = df.with_columns(pl.col("text").tokens.count(model="gpt-5").alias("token_count"))
+```
+
+Aliases are exact, not prefix matches, and are pinned by
+`polars_tokenizer.MODEL_REGISTRY_VERSION`. Pass a tokenizer when reproducibility
+should not depend on a provider model name.
+
 The functional form is also available and is friendlier to static type
 checkers:
 
