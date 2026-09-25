@@ -35,6 +35,9 @@ estimation.
 ## Token estimation
 
 - Freeze a multilingual, multi-format training and held-out corpus.
+- Implemented a benchmark-only error summarizer with zero-token handling and
+  language/content/length/count/ASCII strata. It does not supply the corpus
+  or a fitted estimator.
 - Measure one-pass UTF-8 features by accuracy contribution per CPU cost.
 - Fit deterministic, dependency-free estimators independently for each
   tokenizer family.
