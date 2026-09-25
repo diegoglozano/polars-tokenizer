@@ -57,13 +57,78 @@ def flatten_report(report: dict[str, Any]) -> list[dict[str, Any]]:
                 "mib_per_second": measurement["mib_per_second"],
                 "tokens_per_second": measurement["tokens_per_second"],
                 "process_cpu_percent": measurement["process_cpu_percent"],
-                "peak_rss_bytes": report["measurements"]["peak_rss_bytes"],
+                "peak_rss_bytes": report["measurements"][
+                    "reference_peak_rss_bytes"
+                    if name == "python_tiktoken_scalar"
+                    else "plugin_peak_rss_bytes"
+                ],
                 "dataset_sha256": dataset["sha256"],
                 "git_commit": environment["git_commit"],
                 "git_dirty": environment["git_dirty"],
             }
         )
     return rows
+
+
+def combine_reports(plugin: dict[str, Any], reference: dict[str, Any] | None) -> dict[str, Any]:
+    if plugin["implementation"] != "plugin":
+        raise ValueError("expected an isolated plugin report")
+    measurements = plugin["measurements"]
+    if reference is not None:
+        if reference["implementation"] != "reference":
+            raise ValueError("expected an isolated reference report")
+        if plugin["dataset"] != reference["dataset"]:
+            raise ValueError("isolated benchmark datasets differ")
+        reference_measurements = reference["measurements"]
+        if (
+            measurements["output_sha256"] != reference_measurements["output_sha256"]
+            or measurements["total_tokens"] != reference_measurements["total_tokens"]
+        ):
+            raise ValueError("plugin output differs from tiktoken reference")
+    else:
+        reference_measurements = None
+
+    return {
+        "schema_version": 5,
+        "implementation": "isolated",
+        "dataset": plugin["dataset"],
+        "measurements": {
+            "plugin_cold": measurements["plugin_cold"],
+            "plugin_warm": measurements["plugin_warm"],
+            "python_tiktoken_scalar": (
+                reference_measurements["python_tiktoken_scalar"]
+                if reference_measurements is not None
+                else None
+            ),
+            "tiktoken_initialization_seconds": (
+                reference_measurements["tiktoken_initialization_seconds"]
+                if reference_measurements is not None
+                else None
+            ),
+            "plugin_peak_rss_bytes": measurements["peak_rss_bytes"],
+            "reference_peak_rss_bytes": (
+                reference_measurements["peak_rss_bytes"]
+                if reference_measurements is not None
+                else None
+            ),
+            "total_tokens": measurements["total_tokens"],
+            "output_sha256": measurements["output_sha256"],
+        },
+        "environment": plugin["environment"],
+    }
+
+
+def run_implementation(
+    command: list[str], environment: dict[str, str], implementation: str
+) -> dict[str, Any]:
+    completed = subprocess.run(
+        [*command, "--implementation", implementation],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    return json.loads(completed.stdout)
 
 
 def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -189,20 +254,15 @@ def main() -> None:
             "--warm-repeats",
             str(args.warm_repeats),
         ]
-        if args.skip_reference:
-            command.append("--skip-reference")
         environment = {**os.environ, "POLARS_MAX_THREADS": str(threads)}
-        completed = subprocess.run(
-            command,
-            check=True,
-            capture_output=True,
-            text=True,
-            env=environment,
+        plugin_report = run_implementation(command, environment, "plugin")
+        reference_report = (
+            None if args.skip_reference else run_implementation(command, environment, "reference")
         )
-        reports.append(json.loads(completed.stdout))
+        reports.append(combine_reports(plugin_report, reference_report))
 
     report = {
-        "schema_version": 3,
+        "schema_version": 4,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "cases": reports,
         "skipped": skipped,

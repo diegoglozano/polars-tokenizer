@@ -27,8 +27,9 @@ uv run --no-sync python -m benchmarks.run \
   --cardinality 0.1 --null-rate 0.01 --warm-repeats 7
 ```
 
-The matrix runner takes comma-separated axes and starts a fresh process per
-case so `POLARS_MAX_THREADS` is applied before Polars initializes:
+The matrix runner takes comma-separated axes and starts separate plugin and
+reference processes per case. This applies `POLARS_MAX_THREADS` before Polars
+initializes and gives each implementation its own process peak RSS:
 
 ```bash
 uv run --no-sync python -m benchmarks.matrix \
@@ -48,11 +49,16 @@ The Cartesian product above is intentionally large. Start with one varying
 axis at a time, then run selected interactions. Cases whose estimated input is
 over 512 MiB are skipped unless `--max-input-mib` is raised. `--skip-reference`
 is available for profiling very large cases, but release correctness runs must
-retain the reference comparison.
+retain the reference comparison. The runner verifies both processes generated
+the same dataset and per-row token counts before combining their reports.
 
 The single-case runner accepts `--tokenizer`; the matrix accepts
 `--tokenizers`. Both default to `o200k_base`, and each case records the selected
-tokenizer alongside its dataset hash and reference comparison.
+tokenizer alongside its dataset hash and reference comparison. A direct
+`benchmarks.run` invocation defaults to `--implementation all` for convenience;
+its single peak-RSS value covers both implementations. Use `--implementation
+plugin` or `--implementation reference` in separate processes for a fair
+memory comparison.
 
 For native CPU profiles, use the same deterministic case parameters with a
 sampling profiler that can resolve Rust symbols. Keep profiling builds and

@@ -12,7 +12,8 @@ from benchmarks.gemini_local import (
     sentencepiece_scalar_ids,
 )
 from benchmarks.gemini_local import rate as gemini_rate
-from benchmarks.matrix import flatten_report
+from benchmarks.matrix import combine_reports, flatten_report
+from benchmarks.run import count_digest
 
 
 def test_dataset_is_deterministic_and_guarantees_cardinality() -> None:
@@ -94,7 +95,8 @@ def test_flatten_report_keeps_comparison_fields() -> None:
             "plugin_cold": measurement,
             "plugin_warm": measurement,
             "python_tiktoken_scalar": None,
-            "peak_rss_bytes": 1_024,
+            "plugin_peak_rss_bytes": 1_024,
+            "reference_peak_rss_bytes": None,
         },
     }
 
@@ -104,6 +106,83 @@ def test_flatten_report_keeps_comparison_fields() -> None:
     assert rows[0]["input_dtype"] == "categorical"
     assert rows[0]["tokenizer"] == "cl100k_base"
     assert rows[0]["git_dirty"] is True
+    assert rows[0]["peak_rss_bytes"] == 1_024
+
+
+def test_count_digest_distinguishes_nulls_and_positions() -> None:
+    assert count_digest([None, 0, 1]) == count_digest([None, 0, 1])
+    assert count_digest([None, 0, 1]) != count_digest([0, None, 1])
+    assert count_digest([None, 0, 1]) != count_digest([None, 1, 0])
+
+
+def test_combine_reports_keeps_isolated_memory_and_checks_parity() -> None:
+    rate_measurement = {
+        "seconds": 1.0,
+        "rows_per_second": 10.0,
+        "mib_per_second": 1.0,
+        "tokens_per_second": 12.0,
+        "process_cpu_percent": 100.0,
+    }
+    plugin = {
+        "implementation": "plugin",
+        "dataset": {"sha256": "dataset"},
+        "measurements": {
+            "plugin_cold": rate_measurement,
+            "plugin_warm": rate_measurement,
+            "peak_rss_bytes": 1_024,
+            "total_tokens": 12,
+            "output_sha256": "matching",
+        },
+        "environment": {"polars_threads": 2},
+    }
+    reference = {
+        "implementation": "reference",
+        "dataset": {"sha256": "dataset"},
+        "measurements": {
+            "python_tiktoken_scalar": rate_measurement,
+            "tiktoken_initialization_seconds": 0.1,
+            "peak_rss_bytes": 2_048,
+            "total_tokens": 12,
+            "output_sha256": "matching",
+        },
+    }
+
+    combined = combine_reports(plugin, reference)
+    assert combined["implementation"] == "isolated"
+    assert combined["measurements"]["plugin_peak_rss_bytes"] == 1_024
+    assert combined["measurements"]["reference_peak_rss_bytes"] == 2_048
+    assert combined["measurements"]["python_tiktoken_scalar"] == rate_measurement
+
+    full_report = {
+        **combined,
+        "dataset": {
+            "rows": 10,
+            "bytes": 100,
+            "length_class": "tiny",
+            "content": "mixed",
+            "input_dtype": "string",
+            "tokenizer": "o200k_base",
+            "requested_cardinality": 1.0,
+            "actual_cardinality": 1.0,
+            "null_rate": 0.0,
+            "sha256": "dataset",
+        },
+        "environment": {"polars_threads": 2, "git_commit": "deadbeef", "git_dirty": False},
+    }
+    rows = flatten_report(full_report)
+    assert [row["peak_rss_bytes"] for row in rows] == [1_024, 1_024, 2_048]
+
+    reference["measurements"]["output_sha256"] = "different"
+    with pytest.raises(ValueError, match="output differs"):
+        combine_reports(plugin, reference)
+
+    reference["dataset"]["sha256"] = "different"
+    with pytest.raises(ValueError, match="datasets differ"):
+        combine_reports(plugin, reference)
+
+    plugin["implementation"] = "all"
+    with pytest.raises(ValueError, match="isolated plugin"):
+        combine_reports(plugin, None)
 
 
 def test_gemini_benchmark_rate_uses_median_wall_time() -> None:
