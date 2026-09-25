@@ -161,6 +161,39 @@ cardinality is 719 MiB/s rather than the 413 MiB/s high-cardinality result.
 The non-monotonic middle values should not be over-interpreted on this shared
 host.
 
+### Experimental bounded whole-value cache
+
+The standalone Rust [cache crossover benchmark](benchmarking.md#whole-value-cache-crossover-experiment)
+compares each count-only kernel with 256-entry and 4,096-entry FIFO caches.
+The cache is rebuilt per 100,000-row batch; inputs are shuffled 128-byte
+strings, and cached outputs are checked against uncached outputs before timing.
+The first shared-host sweep used 10 Criterion samples, 0.5-second warm-up, and
+1-second target measurement per case. Speedups below are relative to uncached
+counting for the same tokenizer and dataset; they are directional, not a
+controlled-host result.
+
+```bash
+cargo bench --bench cache_crossover -- \
+  --sample-size 10 --warm-up-time 0.5 --measurement-time 1 \
+  --noplot --discard-baseline
+```
+
+| Cardinality | `o200k_base` 256 | `o200k_base` 4,096 | `cl100k_base` 256 | `cl100k_base` 4,096 |
+|---:|---:|---:|---:|---:|
+| 0.01% | 6.13x | 6.18x | 7.02x | 6.83x |
+| 0.1% | 6.42x | 6.04x | 5.65x | 6.02x |
+| 1% | 1.01x | 5.85x | 1.25x | 6.73x |
+| 10% | 0.82x | 1.10x | 0.79x | 1.11x |
+| 50% | 0.80x | 0.82x | 0.81x | 0.78x |
+| 100% | 0.77x | 0.77x | 0.81x | 0.70x |
+
+At 1% cardinality, the 256-entry cache hit on 25,131 of 100,000 rows;
+the 4,096-entry cache held all 1,000 values and hit on 99,000 rows. At 10%,
+the 4,096-entry cache hit on 37,746 rows, leaving only a small timing gain.
+At 100%, neither cache hit. This experiment excludes Polars dispatch,
+Arrow output construction, nulls, parallelism, and peak RSS. It does not
+justify a runtime cache policy yet.
+
 ## Categorical fast path
 
 The same 100,000-row workload was run with string and categorical inputs after

@@ -34,6 +34,10 @@ name = "exact_count"
 harness = false
 
 [[bench]]
+name = "cache_crossover"
+harness = false
+
+[[bench]]
 name = "gemma3_count"
 harness = false
 required-features = ["gemma3-prototype"]
