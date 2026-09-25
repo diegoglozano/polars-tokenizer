@@ -282,10 +282,10 @@ fn byte_balanced_ranges(
     strings: &StringChunked,
     total_bytes: usize,
     max_parts: usize,
-) -> Vec<(usize, usize)> {
+) -> (Vec<(usize, usize)>, usize) {
     debug_assert!(max_parts > 0);
     if strings.is_empty() {
-        return Vec::new();
+        return (Vec::new(), 0);
     }
 
     let mut ranges = Vec::with_capacity(max_parts.min(strings.len()));
@@ -293,9 +293,12 @@ fn byte_balanced_ranges(
     let mut range_bytes = 0;
     let mut remaining_bytes = total_bytes;
     let mut remaining_parts = max_parts.min(strings.len());
+    let mut largest_row_bytes = 0;
 
     for (index, value) in strings.into_iter().enumerate() {
-        range_bytes += value.map_or(0, str::len);
+        let row_bytes = value.map_or(0, str::len);
+        range_bytes += row_bytes;
+        largest_row_bytes = largest_row_bytes.max(row_bytes);
         let target = remaining_bytes.div_ceil(remaining_parts);
         let rows_remaining = strings.len() - index - 1;
 
@@ -311,7 +314,7 @@ fn byte_balanced_ranges(
     if start < strings.len() {
         ranges.push((start, strings.len() - start));
     }
-    ranges
+    (ranges, largest_row_bytes)
 }
 
 fn count_parallel(
@@ -321,7 +324,12 @@ fn count_parallel(
 ) -> PolarsResult<UInt32Chunked> {
     let n_threads = THREAD_POOL.current_num_threads();
     let max_parts = n_threads.saturating_mul(TASKS_PER_THREAD).max(1);
-    let ranges = byte_balanced_ranges(strings, total_bytes, max_parts);
+    let (ranges, largest_row_bytes) = byte_balanced_ranges(strings, total_bytes, max_parts);
+    // A dominant row cannot be split. If the other rows are too small to
+    // amortize Rayon dispatch and output concatenation, stay sequential.
+    if total_bytes.saturating_sub(largest_row_bytes) < PARALLEL_MIN_BYTES {
+        return count_chunk(strings, encoding);
+    }
 
     let chunks = POOL.install(|| {
         ranges
@@ -449,8 +457,10 @@ mod tests {
         ];
         let strings =
             StringChunked::from_iter_options("text".into(), values.iter().map(Option::as_deref));
-        let ranges = byte_balanced_ranges(&strings, strings.get_values_size(), 3);
+        let (ranges, largest_row_bytes) =
+            byte_balanced_ranges(&strings, strings.get_values_size(), 3);
 
+        assert_eq!(largest_row_bytes, 100);
         assert_eq!(ranges.first().map(|range| range.0), Some(0));
         assert_eq!(
             ranges.iter().map(|range| range.1).sum::<usize>(),
@@ -459,6 +469,25 @@ mod tests {
         for pair in ranges.windows(2) {
             assert_eq!(pair[0].0 + pair[0].1, pair[1].0);
         }
+    }
+
+    #[test]
+    fn dominant_row_uses_sequential_fallback_with_exact_counts() {
+        let values = [
+            Some("你好👋".repeat(100_000)),
+            None,
+            Some("short".to_owned()),
+        ];
+        let strings =
+            StringChunked::from_iter_options("text".into(), values.iter().map(Option::as_deref));
+        let total_bytes = strings.get_values_size();
+        let (_, largest_row_bytes) = byte_balanced_ranges(&strings, total_bytes, 4);
+        assert!(total_bytes - largest_row_bytes < PARALLEL_MIN_BYTES);
+
+        let encoding = resolve_encoding(O200K_BASE).unwrap();
+        let sequential = count_chunk(&strings, encoding).unwrap();
+        let parallel = count_parallel(&strings, total_bytes, encoding).unwrap();
+        assert!(sequential.into_iter().eq(&parallel));
     }
 
     #[test]

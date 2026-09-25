@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import random
 from collections.abc import Sequence
 from typing import Final
@@ -50,6 +51,9 @@ CONTENT_SAMPLES: Final = {
 }
 CONTENT_TYPES: Final = ("mixed", *CONTENT_SAMPLES)
 INPUT_DTYPES: Final = ("string", "categorical")
+OUTLIER_POSITIONS: Final = ("first", "middle", "last")
+OUTLIER_PREFIX: Final = "Oversized benchmark row: "
+OUTLIER_SAMPLE: Final = "The quick brown fox jumps over 13 lazy dogs. 你好👋\n"
 
 
 def _value_for(sample: str, target_bytes: int, index: int) -> str:
@@ -104,6 +108,36 @@ def make_dataset(
     return values
 
 
+def inject_oversized_row(
+    values: list[str | None], target_bytes: int, position: str = "middle"
+) -> int:
+    """Replace one non-null row with a deterministic exact-byte-size outlier."""
+    if target_bytes < len(OUTLIER_PREFIX):
+        raise ValueError(f"outlier must be at least {len(OUTLIER_PREFIX)} bytes")
+    if position not in OUTLIER_POSITIONS:
+        raise ValueError(f"unknown outlier position: {position}")
+    non_null_rows = sum(value is not None for value in values)
+    if not non_null_rows:
+        raise ValueError("outlier requires a non-null row")
+    rank = {
+        "first": 0,
+        "middle": non_null_rows // 2,
+        "last": non_null_rows - 1,
+    }[position]
+    eligible = (index for index, value in enumerate(values) if value is not None)
+    selected = next(itertools.islice(eligible, rank, None))
+    remaining = target_bytes - len(OUTLIER_PREFIX)
+    sample_bytes = len(OUTLIER_SAMPLE.encode())
+    oversized = (
+        OUTLIER_PREFIX
+        + OUTLIER_SAMPLE * (remaining // sample_bytes)
+        + "x" * (remaining % sample_bytes)
+    )
+    assert len(oversized.encode()) == target_bytes
+    values[selected] = oversized
+    return selected
+
+
 def dataset_digest(values: Sequence[str | None]) -> str:
     """Hash values without delimiter ambiguity and with nulls distinguished."""
     digest = hashlib.sha256()
@@ -123,12 +157,15 @@ def dataset_statistics(
 ) -> dict[str, int | float]:
     null_rows = 0
     byte_count = 0
+    max_row_bytes = 0
     observed_values = set() if unique_values is None else None
     for value in values:
         if value is None:
             null_rows += 1
             continue
-        byte_count += len(value.encode())
+        value_bytes = len(value.encode())
+        byte_count += value_bytes
+        max_row_bytes = max(max_row_bytes, value_bytes)
         if observed_values is not None:
             observed_values.add(value)
     non_null_rows = len(values) - null_rows
@@ -138,6 +175,7 @@ def dataset_statistics(
         "rows": len(values),
         "null_rows": null_rows,
         "bytes": byte_count,
+        "max_row_bytes": max_row_bytes,
         "unique_values": unique,
         "actual_cardinality": unique / non_null_rows if non_null_rows else 0.0,
     }
