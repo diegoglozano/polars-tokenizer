@@ -19,7 +19,9 @@ estimation.
 - An experimental bounded whole-value cache benchmark now covers 0.01%,
   0.1%, 1%, 10%, 50%, and 100% cardinality. Repeat it on a controlled host
   with end-to-end memory measurements before choosing an automatic policy.
-- Investigate exceptionally large individual rows without introducing nested
+- The benchmark matrix now supports deterministic exceptionally large rows.
+  A dominant-row guard skips parallel dispatch when less than 512 KiB of
+  independent text remains; continue profiling huge rows without nested
   thread pools or changing exact results.
 
 ## Token estimation

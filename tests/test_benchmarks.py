@@ -4,7 +4,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from benchmarks._data import CONTENT_TYPES, dataset_digest, dataset_statistics, make_dataset
+from benchmarks._data import (
+    CONTENT_TYPES,
+    dataset_digest,
+    dataset_statistics,
+    inject_oversized_row,
+    make_dataset,
+)
 from benchmarks.cache_polars import combine_case
 from benchmarks.gemini_local import (
     google_batch_total,
@@ -42,6 +48,7 @@ def test_null_statistics_and_digest_are_stable() -> None:
     assert statistics["unique_values"] == 18
     assert statistics["actual_cardinality"] == 0.2
     assert statistics["bytes"] > 0
+    assert statistics["max_row_bytes"] > 0
     assert dataset_digest(values) == dataset_digest(list(values))
 
 
@@ -55,6 +62,33 @@ def test_all_null_statistics_are_defined() -> None:
     statistics = dataset_statistics([None, None])
     assert statistics["null_rows"] == 2
     assert statistics["actual_cardinality"] == 0.0
+    assert statistics["max_row_bytes"] == 0
+
+
+@pytest.mark.parametrize("position", ["first", "middle", "last"])
+def test_oversized_row_is_exact_and_keeps_nulls(position: str) -> None:
+    original = make_dataset(100, "tiny", 0.1, 9, null_rate=0.1)
+    values = list(original)
+    index = inject_oversized_row(values, 1_024, position)
+
+    oversized = values[index]
+    assert oversized is not None
+    assert len(oversized.encode()) == 1_024
+    assert sum(value is None for value in values) == 10
+    assert sum(left != right for left, right in zip(original, values, strict=True)) == 1
+    assert dataset_statistics(values)["max_row_bytes"] == 1_024
+    repeated = list(original)
+    assert inject_oversized_row(repeated, 1_024, position) == index
+    assert dataset_digest(values) == dataset_digest(repeated)
+
+
+def test_invalid_oversized_row_parameters_fail() -> None:
+    with pytest.raises(ValueError, match="at least"):
+        inject_oversized_row(["text"], 1)
+    with pytest.raises(ValueError, match="position"):
+        inject_oversized_row(["text"], 128, "unknown")
+    with pytest.raises(ValueError, match="non-null"):
+        inject_oversized_row([None], 128)
 
 
 def test_invalid_dataset_parameters_fail() -> None:
@@ -78,6 +112,7 @@ def test_flatten_report_keeps_comparison_fields() -> None:
         "dataset": {
             "rows": 10,
             "bytes": 100,
+            "max_row_bytes": 100,
             "length_class": "tiny",
             "content": "mixed",
             "input_dtype": "categorical",
@@ -85,6 +120,9 @@ def test_flatten_report_keeps_comparison_fields() -> None:
             "requested_cardinality": 1.0,
             "actual_cardinality": 1.0,
             "null_rate": 0.0,
+            "outlier_bytes": 0,
+            "outlier_position": None,
+            "outlier_index": None,
             "sha256": "abc",
         },
         "environment": {
@@ -108,6 +146,7 @@ def test_flatten_report_keeps_comparison_fields() -> None:
     assert rows[0]["tokenizer"] == "cl100k_base"
     assert rows[0]["git_dirty"] is True
     assert rows[0]["peak_rss_bytes"] == 1_024
+    assert rows[0]["max_row_bytes"] == 100
 
 
 def test_count_digest_distinguishes_nulls_and_positions() -> None:
@@ -159,6 +198,7 @@ def test_combine_reports_keeps_isolated_memory_and_checks_parity() -> None:
         "dataset": {
             "rows": 10,
             "bytes": 100,
+            "max_row_bytes": 100,
             "length_class": "tiny",
             "content": "mixed",
             "input_dtype": "string",
@@ -166,6 +206,9 @@ def test_combine_reports_keeps_isolated_memory_and_checks_parity() -> None:
             "requested_cardinality": 1.0,
             "actual_cardinality": 1.0,
             "null_rate": 0.0,
+            "outlier_bytes": 0,
+            "outlier_position": None,
+            "outlier_index": None,
             "sha256": "dataset",
         },
         "environment": {"polars_threads": 2, "git_commit": "deadbeef", "git_dirty": False},

@@ -60,6 +60,26 @@ its single peak-RSS value covers both implementations. Use `--implementation
 plugin` or `--implementation reference` in separate processes for a fair
 memory comparison.
 
+For exceptionally large individual rows, `--outlier-bytes` replaces one
+non-null row with deterministic text of exactly that UTF-8 byte length. The
+default position is `middle`; `first` and `last` are also available. The
+matrix accepts comma-separated outlier sizes, including `0` for the ordinary
+control workload:
+
+```bash
+uv run --no-sync python -m benchmarks.matrix \
+  --rows 100 --lengths tiny --cardinalities 0.5 \
+  --outlier-bytes 0,1048576,4194304,16777216 \
+  --outlier-position middle --tokenizers o200k_base,cl100k_base \
+  --threads 1,4 --warm-repeats 5 \
+  --output /tmp/polars-tokenizer/oversized-rows.json
+```
+
+Each case records the actual maximum row length and outlier index. The input
+size guard includes the outlier, and the separate-process reference comparison
+still checks every output row. This diagnostic does not split an individual
+string across threads.
+
 For native CPU profiles, use the same deterministic case parameters with a
 sampling profiler that can resolve Rust symbols. Keep profiling builds and
 compiler flags in the result notes. Separate these regions when interpreting a

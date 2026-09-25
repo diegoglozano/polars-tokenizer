@@ -23,8 +23,10 @@ from benchmarks._data import (
     CONTENT_TYPES,
     INPUT_DTYPES,
     LENGTH_BYTES,
+    OUTLIER_POSITIONS,
     dataset_digest,
     dataset_statistics,
+    inject_oversized_row,
     make_dataset,
 )
 
@@ -123,6 +125,8 @@ def main() -> None:
     parser.add_argument("--tokenizer", choices=("o200k_base", "cl100k_base"), default="o200k_base")
     parser.add_argument("--cardinality", type=float, default=1.0)
     parser.add_argument("--null-rate", type=float, default=0.0)
+    parser.add_argument("--outlier-bytes", type=int, default=0)
+    parser.add_argument("--outlier-position", choices=OUTLIER_POSITIONS, default="middle")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--warm-repeats", type=int, default=5)
     parser.add_argument("--implementation", choices=("all", "plugin", "reference"), default="all")
@@ -133,6 +137,10 @@ def main() -> None:
         parser.error("--warm-repeats must be positive")
     if args.skip_reference and args.implementation != "all":
         parser.error("--skip-reference cannot be combined with --implementation")
+    if args.outlier_bytes < 0:
+        parser.error("--outlier-bytes must be nonnegative")
+    if args.outlier_bytes and args.outlier_bytes <= LENGTH_BYTES[args.length]:
+        parser.error("--outlier-bytes must exceed the regular row length")
     implementation = "plugin" if args.skip_reference else args.implementation
 
     try:
@@ -146,9 +154,19 @@ def main() -> None:
         )
     except ValueError as error:
         parser.error(str(error))
+    outlier_index = None
+    if args.outlier_bytes:
+        try:
+            outlier_index = inject_oversized_row(values, args.outlier_bytes, args.outlier_position)
+        except ValueError as error:
+            parser.error(str(error))
     null_rows = min(args.rows - 1, round(args.rows * args.null_rate))
     non_null_rows = args.rows - null_rows
-    unique_values = max(1, min(non_null_rows, round(non_null_rows * args.cardinality)))
+    unique_values = (
+        None
+        if outlier_index is not None
+        else max(1, min(non_null_rows, round(non_null_rows * args.cardinality)))
+    )
     statistics = dataset_statistics(values, unique_values=unique_values)
     byte_count = int(statistics["bytes"])
     plugin_cold = None
@@ -198,7 +216,7 @@ def main() -> None:
     assert counts is not None
     rss_bytes = peak_rss_bytes()
     report = {
-        "schema_version": 5,
+        "schema_version": 6,
         "implementation": implementation,
         "dataset": {
             **statistics,
@@ -210,6 +228,9 @@ def main() -> None:
             "requested_cardinality": args.cardinality,
             "requested_null_rate": args.null_rate,
             "null_rate": statistics["null_rows"] / args.rows,
+            "outlier_bytes": args.outlier_bytes,
+            "outlier_position": args.outlier_position if outlier_index is not None else None,
+            "outlier_index": outlier_index,
             "seed": args.seed,
             "sha256": dataset_digest(values),
         },

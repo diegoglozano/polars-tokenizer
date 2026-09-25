@@ -138,6 +138,31 @@ normal for this shared host. A threshold sweep found neutral or negative gains
 at 250–400 KiB and a positive crossover near 500 KiB, which is why the runtime
 cutoff is 512 KiB.
 
+### Dominant individual rows
+
+An isolated matrix case with 100 tiny rows and one 4 or 16 MiB middle row
+matched the Python `tiktoken` reference for both tokenizers. Before the
+dominant-row guard, four-thread runs spent about one core of CPU on these
+cases: one row cannot be divided across the worker pool. The dispatcher now
+stays sequential when the text outside the largest row totals less than
+512 KiB, avoiding parallel task and output-concatenation overhead without
+changing token counts. On this shared host, 20 warm repetitions after the
+guard gave these median times:
+
+| Tokenizer | Largest row | 1 thread | 4 threads |
+|---|---:|---:|---:|
+| `o200k_base` | 4 MiB | 31.0 ms | 30.6 ms |
+| `o200k_base` | 16 MiB | 123.1 ms | 125.5 ms |
+| `cl100k_base` | 4 MiB | 30.8 ms | 30.3 ms |
+| `cl100k_base` | 16 MiB | 123.8 ms | 123.4 ms |
+
+The nearly equal times are directional; this host is shared, and the guard
+does not make a single row parallel. With 100,000 additional short rows, the
+remaining text exceeds the guard threshold and the parallel path remains
+available. The ordinary 100,000-row short-string workload still measured
+about 178 MiB/s at one thread and 352 MiB/s at four threads in a follow-up
+run. Controlled-host profiling is still needed before any intra-row strategy.
+
 ## Cardinality sweep before whole-value caching
 
 The benchmark-matrix milestone measured 100,000 mixed 128-byte strings with

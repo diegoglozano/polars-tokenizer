@@ -16,7 +16,7 @@ from typing import Any, TypeVar
 
 import polars as pl
 
-from benchmarks._data import CONTENT_TYPES, INPUT_DTYPES, LENGTH_BYTES
+from benchmarks._data import CONTENT_TYPES, INPUT_DTYPES, LENGTH_BYTES, OUTLIER_POSITIONS
 
 T = TypeVar("T")
 
@@ -44,6 +44,7 @@ def flatten_report(report: dict[str, Any]) -> list[dict[str, Any]]:
                 "implementation": name,
                 "rows": dataset["rows"],
                 "bytes": dataset["bytes"],
+                "max_row_bytes": dataset["max_row_bytes"],
                 "length_class": dataset["length_class"],
                 "content": dataset["content"],
                 "input_dtype": dataset["input_dtype"],
@@ -51,6 +52,9 @@ def flatten_report(report: dict[str, Any]) -> list[dict[str, Any]]:
                 "requested_cardinality": dataset["requested_cardinality"],
                 "actual_cardinality": dataset["actual_cardinality"],
                 "null_rate": dataset["null_rate"],
+                "outlier_bytes": dataset["outlier_bytes"],
+                "outlier_position": dataset["outlier_position"],
+                "outlier_index": dataset["outlier_index"],
                 "threads": environment["polars_threads"],
                 "seconds": measurement["seconds"],
                 "rows_per_second": measurement["rows_per_second"],
@@ -89,7 +93,7 @@ def combine_reports(plugin: dict[str, Any], reference: dict[str, Any] | None) ->
         reference_measurements = None
 
     return {
-        "schema_version": 5,
+        "schema_version": 6,
         "implementation": "isolated",
         "dataset": plugin["dataset"],
         "measurements": {
@@ -167,6 +171,10 @@ def main() -> None:
     )
     parser.add_argument("--threads", type=lambda value: comma_separated(value, int), default=[1])
     parser.add_argument("--null-rate", type=float, default=0.0)
+    parser.add_argument(
+        "--outlier-bytes", type=lambda value: comma_separated(value, int), default=[0]
+    )
+    parser.add_argument("--outlier-position", choices=OUTLIER_POSITIONS, default="middle")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--warm-repeats", type=int, default=5)
     parser.add_argument("--max-input-mib", type=int, default=512)
@@ -192,6 +200,13 @@ def main() -> None:
         parser.error("--cardinalities values must be in (0, 1]")
     if not 0 <= args.null_rate < 1:
         parser.error("--null-rate must be in [0, 1)")
+    if any(value < 0 for value in args.outlier_bytes):
+        parser.error("--outlier-bytes values must be nonnegative")
+    if any(
+        outlier_bytes and outlier_bytes <= LENGTH_BYTES[length]
+        for outlier_bytes, length in itertools.product(args.outlier_bytes, args.lengths)
+    ):
+        parser.error("--outlier-bytes values must exceed every selected regular row length")
 
     reports = []
     skipped = []
@@ -199,6 +214,7 @@ def main() -> None:
         itertools.product(
             args.rows,
             args.lengths,
+            args.outlier_bytes,
             args.cardinalities,
             args.contents,
             args.dtypes,
@@ -210,16 +226,19 @@ def main() -> None:
     for case_number, (
         rows,
         length,
+        outlier_bytes,
         cardinality,
         content,
         input_dtype,
         tokenizer,
         threads,
     ) in enumerate(cases, start=1):
-        estimated_bytes = rows * LENGTH_BYTES[length]
+        estimated_bytes = rows * LENGTH_BYTES[length] + outlier_bytes
         case = {
             "rows": rows,
             "length": length,
+            "outlier_bytes": outlier_bytes,
+            "outlier_position": args.outlier_position if outlier_bytes else None,
             "cardinality": cardinality,
             "content": content,
             "input_dtype": input_dtype,
@@ -239,6 +258,10 @@ def main() -> None:
             str(rows),
             "--length",
             length,
+            "--outlier-bytes",
+            str(outlier_bytes),
+            "--outlier-position",
+            args.outlier_position,
             "--cardinality",
             str(cardinality),
             "--content",
@@ -262,7 +285,7 @@ def main() -> None:
         reports.append(combine_reports(plugin_report, reference_report))
 
     report = {
-        "schema_version": 4,
+        "schema_version": 5,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "cases": reports,
         "skipped": skipped,
