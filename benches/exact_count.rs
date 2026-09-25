@@ -28,5 +28,28 @@ fn benchmark_exact_count(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, benchmark_exact_count);
+fn benchmark_core_count_vs_encode(c: &mut Criterion) {
+    for tokenizer in ["o200k_base", "cl100k_base"] {
+        let encoding = tiktoken::get_encoding(tokenizer).expect("vocabulary must be compiled in");
+        let mut group = c.benchmark_group(format!("{tokenizer}_core_count_vs_encode"));
+        for bytes in [32, 256, 4 * 1024, 128 * 1024] {
+            let text = corpus(bytes);
+            assert_eq!(encoding.count(&text), encoding.encode(&text).len());
+            group.throughput(Throughput::Bytes(text.len() as u64));
+            group.bench_with_input(BenchmarkId::new("count", bytes), &text, |b, text| {
+                b.iter(|| black_box(encoding.count(black_box(text))));
+            });
+            group.bench_with_input(BenchmarkId::new("encode", bytes), &text, |b, text| {
+                b.iter(|| black_box(encoding.encode(black_box(text))));
+            });
+        }
+        group.finish();
+    }
+}
+
+criterion_group!(
+    benches,
+    benchmark_exact_count,
+    benchmark_core_count_vs_encode
+);
 criterion_main!(benches);

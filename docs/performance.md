@@ -277,6 +277,27 @@ values include repeated multilingual text, so this is not a pure length
 scaling curve. Shared-host variation also prevents ranking the three counting
 modes from these measurements.
 
+### Count-only versus token-ID encoding
+
+The Criterion harness now pairs direct `CoreBpe::count()` and
+`CoreBpe::encode()` on the same repeated-sample strings, checking
+`count == encode.len()` before every pair. A short shared-host diagnostic
+run used ten samples, a one-second warmup, and a one-second measurement window
+per case. The observed encode-time/count-time median ratios were:
+
+| Target size | `o200k_base` | `cl100k_base` |
+|---:|---:|---:|
+| 32 B | 1.10x | 1.12x |
+| 256 B | 1.08x | 1.05x |
+| 4 KiB | 1.10x | 1.01x |
+| 128 KiB | 1.16x | 1.03x |
+
+These are not controlled-host speedups; several pairs are within measurement
+variation. The count path also uses the crate's internal piece cache, so the
+difference cannot be attributed only to avoiding token-ID allocation. The
+corpus is a repeated sample and the labels are size targets rather than exact
+byte lengths.
+
 ## Categorical fast path
 
 The same 100,000-row workload was run with string and categorical inputs after
