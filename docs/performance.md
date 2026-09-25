@@ -44,15 +44,16 @@ counts (SHA-256
 | `cl100k_base` | 158 | 456 |
 
 These are directional shared-host measurements, not controlled-host release
-claims. The matrix's peak RSS includes the Python reference check and should
-not be attributed to the plugin alone. Reproduce the comparison with:
+claims. Older matrix peak-RSS results include the Python reference check and
+should not be attributed to the plugin alone. The current matrix records
+separate process peaks. Reproduce the comparison with:
 
 ```bash
 uv run --no-sync python -m benchmarks.matrix \
   --rows 100000 --lengths short --cardinalities 1.0 \
   --contents mixed --dtypes string \
   --tokenizers o200k_base,cl100k_base \
-  --threads 1,4 --warm-repeats 5
+  --threads 1,4 --warm-repeats 5 \
 ```
 
 ## Google local Gemma 3 baseline
