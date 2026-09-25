@@ -52,9 +52,10 @@ structured form:
 details = df.select(pl.col("text").tokens.estimate_cost_details(model="gpt-5").alias("estimate"))
 ```
 
-Each struct contains `cost_usd`, `token_count_mode` (currently `"exact"`), the
-model and billing category, and the pinned rate's provider, date, and registry
-version. `price_per_unit` is a decimal string to preserve the published rate.
+Each struct contains the `UInt32` `token_count` used for pricing, `cost_usd`,
+`token_count_mode` (currently `"exact"`), the model and billing category, and
+the pinned rate's provider, date, and registry version. `price_per_unit` is a
+decimal string to preserve the published rate.
 For caller-supplied rates, `price_source` is `"caller_override"` and unverified
 snapshot and serving-provider fields are null. `estimate_cost()` remains the
 compact `Float64` expression.

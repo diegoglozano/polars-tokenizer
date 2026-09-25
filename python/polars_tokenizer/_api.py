@@ -91,7 +91,7 @@ def estimate_cost_details(
     usd_per_million_tokens: UsdPerMillionOverride | None = None,
     snapshot_date: str | None = None,
 ) -> pl.Expr:
-    """Return a struct with raw-text cost, count mode, and price provenance.
+    """Return a struct with raw-text token count, cost, and price provenance.
 
     The `cost_usd` field is null for null input; metadata fields remain present.
     Caller-supplied rates have no pinned snapshot or known serving provider.
@@ -116,8 +116,10 @@ def estimate_cost_details(
         source_url = None
         price_source = "caller_override"
 
+    token_counts = count(expr, model=model)
     return pl.struct(
-        cost_usd=count(expr, model=model).cast(pl.Float64) * float(price_per_token),
+        token_count=token_counts,
+        cost_usd=token_counts.cast(pl.Float64) * float(price_per_token),
         token_count_mode=pl.lit("exact"),
         model=pl.lit(model),
         model_registry_version=pl.lit(MODEL_REGISTRY_VERSION),
@@ -174,7 +176,7 @@ class TokenExprNameSpace:
         usd_per_million_tokens: UsdPerMillionOverride | None = None,
         snapshot_date: str | None = None,
     ) -> pl.Expr:
-        """Return a struct with cost, token-count mode, and price provenance."""
+        """Return a struct with token count, cost, and price provenance."""
         return estimate_cost_details(
             self._expr,
             model=model,
