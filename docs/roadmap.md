@@ -139,7 +139,10 @@ snapshot. Before broadening that API:
   through `estimate_cost_details()`. Current supported models all use `exact`.
 - [x] Keep raw-text cost estimates distinct from full request costs, which may also
   include wrappers, tools, images, audio, or provider serialization.
-- [ ] Test boundary dates and unknown/retired model behavior.
+- [x] Test exact price-snapshot date boundaries and unknown/retired identifiers
+  outside the pinned model registry. The current price registry has one
+  snapshot; no historical price interval or live model-availability claim is
+  inferred from it.
 - [x] Avoid runtime network access in DataFrame expressions.
 
 The initial operation should estimate the cost of the provided raw text in one

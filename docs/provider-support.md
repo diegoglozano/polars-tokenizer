@@ -53,6 +53,12 @@ serving-provider fields are null for caller-supplied rates because the package
 cannot verify them. The scalar `estimate_cost()` remains available for compact
 numeric calculations. DataFrame expressions do not fetch live pricing.
 
+The optional `snapshot_date` selector requires an exact bundled price snapshot;
+it is not an `as_of` lookup. A pinned tokenizer alias remains an offline
+mapping even if the serving provider later retires the model. Unsupported
+identifiers, including [retired OpenAI snapshots](https://developers.openai.com/api/docs/deprecations)
+outside this registry, fail before any DataFrame execution.
+
 ## Primary references
 
 - [OpenAI `tiktoken`](https://github.com/openai/tiktoken)

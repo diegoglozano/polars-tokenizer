@@ -115,6 +115,53 @@ def test_price_metadata_is_pinned_and_inspectable() -> None:
     assert price.source_url.startswith("https://developers.openai.com/")
 
 
+def test_explicit_snapshot_date_selects_the_pinned_price() -> None:
+    price = tokens.price_info("gpt-5", snapshot_date=tokens.PRICE_SNAPSHOT_DATE)
+    result = pl.DataFrame({"text": ["hello world"]}).select(
+        tokens.estimate_cost_details(
+            "text", model="gpt-5", snapshot_date=tokens.PRICE_SNAPSHOT_DATE
+        ).alias("estimate")
+    )
+
+    assert price.snapshot_date == tokens.PRICE_SNAPSHOT_DATE
+    assert price.registry_version == tokens.PRICE_REGISTRY_VERSION
+    assert result["estimate"].item()["price_snapshot_date"] == tokens.PRICE_SNAPSHOT_DATE
+
+
+@pytest.mark.parametrize("snapshot_date", ["2026-09-23", "2026-09-25"])
+def test_price_snapshot_date_boundaries_fail_closed(snapshot_date: str) -> None:
+    with pytest.raises(ValueError, match="no price snapshot for date"):
+        tokens.price_info("gpt-5", snapshot_date=snapshot_date)
+    with pytest.raises(ValueError, match="no price snapshot for date"):
+        tokens.estimate_cost("text", model="gpt-5", snapshot_date=snapshot_date)
+
+
+@pytest.mark.parametrize("snapshot_date", ["2026-9-24", "yesterday", "2026-02-30"])
+def test_invalid_snapshot_date_fails_early(snapshot_date: str) -> None:
+    with pytest.raises(ValueError, match="YYYY-MM-DD"):
+        tokens.price_info("gpt-5", snapshot_date=snapshot_date)
+
+
+def test_snapshot_date_cannot_be_combined_with_caller_rate() -> None:
+    with pytest.raises(ValueError, match="cannot be combined"):
+        tokens.estimate_cost(
+            "text",
+            model="gpt-4",
+            usd_per_million_tokens=3.5,
+            snapshot_date=tokens.PRICE_SNAPSHOT_DATE,
+        )
+
+
+def test_retired_identifier_outside_pinned_model_registry_fails_early() -> None:
+    # OpenAI shut down this snapshot on 2026-03-26. It is not a pinned alias.
+    with pytest.raises(ValueError, match="unknown model"):
+        tokens.estimate_cost(
+            "text",
+            model="gpt-4-0314",  # ty: ignore[invalid-argument-type]
+            usd_per_million_tokens=30.0,
+        )
+
+
 def test_known_model_without_price_snapshot_fails_early() -> None:
     with pytest.raises(ValueError, match="no price snapshot"):
         tokens.estimate_cost(

@@ -36,6 +36,12 @@ pinned by `PRICE_REGISTRY_VERSION`. Cost expressions perform no network access.
 They count only the supplied raw text and exclude request wrappers, tools,
 images, audio, and other provider-side accounting.
 
+To select the bundled price snapshot explicitly, pass
+`snapshot_date=polars_tokenizer.PRICE_SNAPSHOT_DATE` to `price_info()`,
+`estimate_cost()`, or `estimate_cost_details()`. The selector matches a snapshot
+date exactly; dates without a bundled snapshot fail. It does not infer a price
+for dates between snapshots or report whether a model is still served.
+
 For a cost column that carries its count mode and price provenance, use the
 structured form:
 
