@@ -111,6 +111,7 @@ def main() -> None:
     parser.add_argument("--length", choices=LENGTH_BYTES, default="short")
     parser.add_argument("--content", choices=CONTENT_TYPES, default="mixed")
     parser.add_argument("--input-dtype", choices=INPUT_DTYPES, default="string")
+    parser.add_argument("--tokenizer", choices=("o200k_base", "cl100k_base"), default="o200k_base")
     parser.add_argument("--cardinality", type=float, default=1.0)
     parser.add_argument("--null-rate", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=42)
@@ -141,7 +142,7 @@ def main() -> None:
     if args.input_dtype == "categorical":
         series = series.cast(pl.Categorical)
     frame = pl.DataFrame(series)
-    expression = tokens.count("text").alias("count")
+    expression = tokens.count("text", tokenizer=args.tokenizer).alias("count")
 
     _, cold_samples = timed(lambda: frame.select(expression))
     plugin_result, warm_samples = timed(lambda: frame.select(expression), repeats=args.warm_repeats)
@@ -149,9 +150,9 @@ def main() -> None:
     total_tokens = sum(value for value in plugin_values if value is not None)
 
     reference_measurement = None
-    _, init_samples = timed(lambda: tiktoken.get_encoding("o200k_base"))
+    _, init_samples = timed(lambda: tiktoken.get_encoding(args.tokenizer))
     if not args.skip_reference:
-        encoding = tiktoken.get_encoding("o200k_base")
+        encoding = tiktoken.get_encoding(args.tokenizer)
         reference, scalar_samples = timed(
             lambda: [
                 len(encoding.encode(value, disallowed_special=())) if value is not None else None
@@ -165,13 +166,14 @@ def main() -> None:
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     rss_bytes = rss if sys.platform == "darwin" else rss * 1024
     report = {
-        "schema_version": 3,
+        "schema_version": 4,
         "dataset": {
             **statistics,
             "length_class": args.length,
             "target_bytes_per_value": LENGTH_BYTES[args.length],
             "content": args.content,
             "input_dtype": args.input_dtype,
+            "tokenizer": args.tokenizer,
             "requested_cardinality": args.cardinality,
             "requested_null_rate": args.null_rate,
             "null_rate": statistics["null_rows"] / args.rows,

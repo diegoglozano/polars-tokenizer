@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 from typing import TypeAlias
 
@@ -11,9 +12,10 @@ from polars.plugins import register_plugin_function
 from polars_tokenizer._pricing import (
     BillingCategory,
     UsdPerMillionOverride,
+    price_info,
     resolve_price_per_token,
 )
-from polars_tokenizer._registry import Model, Tokenizer, resolve_model
+from polars_tokenizer._registry import MODEL_REGISTRY_VERSION, Model, Tokenizer, resolve_model
 
 IntoExpr: TypeAlias = str | pl.Expr | pl.Series
 
@@ -77,6 +79,52 @@ def estimate_cost(
     return count(expr, model=model).cast(pl.Float64) * float(price_per_token)
 
 
+def estimate_cost_details(
+    expr: IntoExpr,
+    *,
+    model: Model,
+    category: BillingCategory = "input",
+    usd_per_million_tokens: UsdPerMillionOverride | None = None,
+) -> pl.Expr:
+    """Return a struct with raw-text cost, count mode, and price provenance.
+
+    The `cost_usd` field is null for null input; metadata fields remain present.
+    Caller-supplied rates have no pinned snapshot or known serving provider.
+    """
+    price_per_token = resolve_price_per_token(model, category, usd_per_million_tokens)
+    if usd_per_million_tokens is None:
+        price = price_info(model, category)
+        price_per_unit = price.price_per_unit
+        serving_provider = price.serving_provider
+        snapshot_date = price.snapshot_date
+        registry_version = price.registry_version
+        source_url = price.source_url
+        price_source = "registry"
+    else:
+        price_per_unit = Decimal(str(usd_per_million_tokens))
+        serving_provider = None
+        snapshot_date = None
+        registry_version = None
+        source_url = None
+        price_source = "caller_override"
+
+    return pl.struct(
+        cost_usd=count(expr, model=model).cast(pl.Float64) * float(price_per_token),
+        token_count_mode=pl.lit("exact"),
+        model=pl.lit(model),
+        model_registry_version=pl.lit(MODEL_REGISTRY_VERSION),
+        serving_provider=pl.lit(serving_provider, dtype=pl.String),
+        category=pl.lit(category),
+        currency=pl.lit("USD"),
+        price_per_unit=pl.lit(str(price_per_unit)),
+        unit_tokens=pl.lit(1_000_000),
+        price_source=pl.lit(price_source),
+        price_snapshot_date=pl.lit(snapshot_date, dtype=pl.String),
+        price_registry_version=pl.lit(registry_version, dtype=pl.String),
+        price_source_url=pl.lit(source_url, dtype=pl.String),
+    )
+
+
 @pl.api.register_expr_namespace("tokens")
 class TokenExprNameSpace:
     """Token analytics methods for :class:`polars.Expr`."""
@@ -102,6 +150,21 @@ class TokenExprNameSpace:
     ) -> pl.Expr:
         """Estimate raw-text cost in USD from exact local token counts."""
         return estimate_cost(
+            self._expr,
+            model=model,
+            category=category,
+            usd_per_million_tokens=usd_per_million_tokens,
+        )
+
+    def estimate_cost_details(
+        self,
+        *,
+        model: Model,
+        category: BillingCategory = "input",
+        usd_per_million_tokens: UsdPerMillionOverride | None = None,
+    ) -> pl.Expr:
+        """Return a struct with cost, token-count mode, and price provenance."""
+        return estimate_cost_details(
             self._expr,
             model=model,
             category=category,

@@ -29,6 +29,32 @@ against the preceding baseline. The shared expression path resolves one
 `CoreBpe` before processing rows, so supporting the second tokenizer does not
 add tokenizer-name dispatch inside the row loop.
 
+## Two-tokenizer Polars baseline
+
+The end-to-end matrix now selects either exact tokenizer. A release build on
+the shared Intel N95 host counted 100,000 unique mixed short strings totaling
+12,797,394 UTF-8 bytes. Every output row matched Python `tiktoken` 0.12.0.
+The five warm repetitions used the same dataset for both tokenizers and thread
+counts (SHA-256
+`00b9d6346ac6e0b7882f5ed50880b4790d49b78a13caa6628f46a44ea0086ea2`).
+
+| Tokenizer | 1 thread MiB/s | 4 threads MiB/s |
+|---|---:|---:|
+| `o200k_base` | 176 | 457 |
+| `cl100k_base` | 158 | 456 |
+
+These are directional shared-host measurements, not controlled-host release
+claims. The matrix's peak RSS includes the Python reference check and should
+not be attributed to the plugin alone. Reproduce the comparison with:
+
+```bash
+uv run --no-sync python -m benchmarks.matrix \
+  --rows 100000 --lengths short --cardinalities 1.0 \
+  --contents mixed --dtypes string \
+  --tokenizers o200k_base,cl100k_base \
+  --threads 1,4 --warm-repeats 5
+```
+
 ## Google local Gemma 3 baseline
 
 An isolated exploratory run measured Google Gen AI 2.11.0, SentencePiece

@@ -37,6 +37,7 @@ uv run --no-sync python -m benchmarks.matrix \
   --cardinalities 0.01,0.1,0.5,1.0 \
   --contents mixed,english,code,json,logs,urls,spanish,cjk,emoji \
   --dtypes string,categorical \
+  --tokenizers o200k_base,cl100k_base \
   --threads 1,2,4,8 \
   --output /tmp/polars-tokenizer/matrix.json \
   --csv /tmp/polars-tokenizer/matrix.csv \
@@ -48,6 +49,10 @@ axis at a time, then run selected interactions. Cases whose estimated input is
 over 512 MiB are skipped unless `--max-input-mib` is raised. `--skip-reference`
 is available for profiling very large cases, but release correctness runs must
 retain the reference comparison.
+
+The single-case runner accepts `--tokenizer`; the matrix accepts
+`--tokenizers`. Both default to `o200k_base`, and each case records the selected
+tokenizer alongside its dataset hash and reference comparison.
 
 For native CPU profiles, use the same deterministic case parameters with a
 sampling profiler that can resolve Rust symbols. Keep profiling builds and

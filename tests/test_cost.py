@@ -47,6 +47,59 @@ def test_cost_expr_namespace() -> None:
     assert result.item() == pytest.approx(2 * 10.0 / 1_000_000)
 
 
+def test_cost_details_include_exact_mode_and_pinned_price_metadata() -> None:
+    result = (
+        pl.DataFrame({"text": ["hello world", None, ""]})
+        .lazy()
+        .select(
+            pl.col("text")
+            .tokens.estimate_cost_details(  # ty: ignore[unresolved-attribute]
+                model="gpt-5", category="cached_input"
+            )
+            .alias("estimate")
+        )
+        .collect(engine="streaming")
+    )
+    values = result["estimate"].to_list()
+
+    assert values[0]["cost_usd"] == pytest.approx(2 * 0.125 / 1_000_000)
+    assert values[1]["cost_usd"] is None
+    assert values[2]["cost_usd"] == 0.0
+    assert {value["token_count_mode"] for value in values} == {"exact"}
+    assert values[0]["model"] == "gpt-5"
+    assert values[0]["model_registry_version"] == tokens.MODEL_REGISTRY_VERSION
+    assert values[0]["serving_provider"] == "openai"
+    assert values[0]["category"] == "cached_input"
+    assert values[0]["currency"] == "USD"
+    assert values[0]["price_per_unit"] == "0.125"
+    assert values[0]["unit_tokens"] == 1_000_000
+    assert values[0]["price_source"] == "registry"
+    assert values[0]["price_snapshot_date"] == "2026-09-24"
+    assert values[0]["price_registry_version"] == tokens.PRICE_REGISTRY_VERSION
+    assert values[0]["price_source_url"].startswith("https://developers.openai.com/")
+
+
+def test_cost_details_label_caller_override_without_inventing_price_snapshot() -> None:
+    result = pl.DataFrame({"text": ["hello world"]}).select(
+        tokens.estimate_cost_details(
+            "text",
+            model="gpt-4",
+            usd_per_million_tokens=Decimal("3.50"),
+        ).alias("estimate")
+    )
+    value = result["estimate"].item()
+
+    assert value["cost_usd"] == pytest.approx(2 * 3.5 / 1_000_000)
+    assert value["token_count_mode"] == "exact"
+    assert value["model"] == "gpt-4"
+    assert value["price_per_unit"] == "3.50"
+    assert value["price_source"] == "caller_override"
+    assert value["serving_provider"] is None
+    assert value["price_snapshot_date"] is None
+    assert value["price_registry_version"] is None
+    assert value["price_source_url"] is None
+
+
 def test_price_metadata_is_pinned_and_inspectable() -> None:
     price = tokens.price_info("gpt-5", "cached_input")
 
