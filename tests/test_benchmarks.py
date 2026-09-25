@@ -79,6 +79,7 @@ def test_flatten_report_keeps_comparison_fields() -> None:
             "length_class": "tiny",
             "content": "mixed",
             "input_dtype": "categorical",
+            "tokenizer": "cl100k_base",
             "requested_cardinality": 1.0,
             "actual_cardinality": 1.0,
             "null_rate": 0.0,
@@ -101,6 +102,7 @@ def test_flatten_report_keeps_comparison_fields() -> None:
     assert [row["implementation"] for row in rows] == ["plugin_cold", "plugin_warm"]
     assert rows[0]["threads"] == 2
     assert rows[0]["input_dtype"] == "categorical"
+    assert rows[0]["tokenizer"] == "cl100k_base"
     assert rows[0]["git_dirty"] is True
 
 

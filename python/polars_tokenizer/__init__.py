@@ -1,6 +1,6 @@
 """Native count-only token analytics for Polars."""
 
-from polars_tokenizer._api import TokenExprNameSpace, count, estimate_cost
+from polars_tokenizer._api import TokenExprNameSpace, count, estimate_cost, estimate_cost_details
 from polars_tokenizer._pricing import (
     PRICE_REGISTRY_VERSION,
     BillingCategory,
@@ -24,6 +24,7 @@ __all__ = [
     "UsdPerMillionOverride",
     "count",
     "estimate_cost",
+    "estimate_cost_details",
     "price_info",
 ]
 __version__ = "0.1.0"

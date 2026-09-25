@@ -36,6 +36,20 @@ pinned by `PRICE_REGISTRY_VERSION`. Cost expressions perform no network access.
 They count only the supplied raw text and exclude request wrappers, tools,
 images, audio, and other provider-side accounting.
 
+For a cost column that carries its count mode and price provenance, use the
+structured form:
+
+```python
+details = df.select(pl.col("text").tokens.estimate_cost_details(model="gpt-5").alias("estimate"))
+```
+
+Each struct contains `cost_usd`, `token_count_mode` (currently `"exact"`), the
+model and billing category, and the pinned rate's provider, date, and registry
+version. `price_per_unit` is a decimal string to preserve the published rate.
+For caller-supplied rates, `price_source` is `"caller_override"` and unverified
+snapshot and serving-provider fields are null. `estimate_cost()` remains the
+compact `Float64` expression.
+
 Private or negotiated rates can be supplied explicitly without confusing a
 model with a tokenizer:
 
@@ -123,6 +137,7 @@ uv run --no-sync python -m benchmarks.matrix \
   --cardinalities 0.01,0.1,1.0 \
   --contents mixed,code,cjk \
   --dtypes string,categorical \
+  --tokenizers o200k_base,cl100k_base \
   --threads 1,2,4 \
   --output benchmarks/results/matrix.json \
   --csv benchmarks/results/matrix.csv \
@@ -160,7 +175,8 @@ property-generated Unicode strings. Inputs are never normalized.
 ## Scope and roadmap
 
 The public surface currently includes exact counting, versioned OpenAI model
-aliases, pinned GPT-5 cost estimation, and caller-supplied price overrides.
+aliases, pinned GPT-5 cost estimation with structured provenance, and
+caller-supplied price overrides.
 Token-count estimation, cache controls, fused aggregations, and DataFrame-level
 analytics are not exposed yet. The next changes should be driven by profiles
 and benchmark data in this order:

@@ -135,7 +135,8 @@ snapshot. Before broadening that API:
 - [x] Allow an explicit caller-supplied pricing override for private or negotiated
   prices.
 - [x] Resolve the model to its tokenizer independently from its price metadata.
-- [ ] Report the token-count mode (`exact` or `estimate`) alongside the result.
+- [x] Report the token-count mode (`exact` or `estimate`) alongside the result
+  through `estimate_cost_details()`. Current supported models all use `exact`.
 - [x] Keep raw-text cost estimates distinct from full request costs, which may also
   include wrappers, tools, images, audio, or provider serialization.
 - [ ] Test boundary dates and unknown/retired model behavior.

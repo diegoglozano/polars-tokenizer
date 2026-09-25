@@ -47,6 +47,7 @@ def flatten_report(report: dict[str, Any]) -> list[dict[str, Any]]:
                 "length_class": dataset["length_class"],
                 "content": dataset["content"],
                 "input_dtype": dataset["input_dtype"],
+                "tokenizer": dataset["tokenizer"],
                 "requested_cardinality": dataset["requested_cardinality"],
                 "actual_cardinality": dataset["actual_cardinality"],
                 "null_rate": dataset["null_rate"],
@@ -96,6 +97,9 @@ def main() -> None:
     parser.add_argument(
         "--dtypes", type=lambda value: comma_separated(value, str), default=["string"]
     )
+    parser.add_argument(
+        "--tokenizers", type=lambda value: comma_separated(value, str), default=["o200k_base"]
+    )
     parser.add_argument("--threads", type=lambda value: comma_separated(value, int), default=[1])
     parser.add_argument("--null-rate", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=42)
@@ -117,6 +121,8 @@ def main() -> None:
         parser.error(f"unknown content types: {', '.join(unknown)}")
     if unknown := sorted(set(args.dtypes) - set(INPUT_DTYPES)):
         parser.error(f"unknown input dtypes: {', '.join(unknown)}")
+    if unknown := sorted(set(args.tokenizers) - {"o200k_base", "cl100k_base"}):
+        parser.error(f"unknown tokenizers: {', '.join(unknown)}")
     if any(not 0 < value <= 1 for value in args.cardinalities):
         parser.error("--cardinalities values must be in (0, 1]")
     if not 0 <= args.null_rate < 1:
@@ -131,13 +137,20 @@ def main() -> None:
             args.cardinalities,
             args.contents,
             args.dtypes,
+            args.tokenizers,
             args.threads,
         )
     )
     max_bytes = args.max_input_mib * 1024 * 1024
-    for case_number, (rows, length, cardinality, content, input_dtype, threads) in enumerate(
-        cases, start=1
-    ):
+    for case_number, (
+        rows,
+        length,
+        cardinality,
+        content,
+        input_dtype,
+        tokenizer,
+        threads,
+    ) in enumerate(cases, start=1):
         estimated_bytes = rows * LENGTH_BYTES[length]
         case = {
             "rows": rows,
@@ -145,6 +158,7 @@ def main() -> None:
             "cardinality": cardinality,
             "content": content,
             "input_dtype": input_dtype,
+            "tokenizer": tokenizer,
             "threads": threads,
         }
         if estimated_bytes > max_bytes:
@@ -166,6 +180,8 @@ def main() -> None:
             content,
             "--input-dtype",
             input_dtype,
+            "--tokenizer",
+            tokenizer,
             "--null-rate",
             str(args.null_rate),
             "--seed",
@@ -186,7 +202,7 @@ def main() -> None:
         reports.append(json.loads(completed.stdout))
 
     report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "cases": reports,
         "skipped": skipped,
