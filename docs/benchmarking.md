@@ -216,3 +216,12 @@ and 128. Percentage errors exclude zero-token references (which remain in
 absolute-error and bias metrics); percentile errors use nearest-rank. This is
 evaluation plumbing only. No training corpus, held-out corpus, fitted estimator,
 or accuracy claim is included yet.
+
+Before freezing a candidate corpus, use
+`benchmarks.estimator_corpus.validate_corpus()` to verify unique sample IDs,
+both train and held-out partitions, and that neither related `family_id`
+variants nor identical text cross the partition boundary. Its order-independent
+SHA-256 covers each record's text, split, source, language, content type, and
+IDs with length-prefixed fields. `source_id` records provenance but does not
+verify licensing or representativeness. The validator accepts empty text for
+zero-token tests; no dataset is bundled by this module.
