@@ -38,6 +38,9 @@ estimation.
 - Implemented a benchmark-only error summarizer with zero-token handling and
   language/content/length/count/ASCII strata. It does not supply the corpus
   or a fitted estimator.
+- Implemented a candidate-corpus validator and order-independent SHA-256
+  manifest. It rejects duplicate IDs and related or identical text crossing
+  train/held-out splits; corpus sourcing and representativeness remain open.
 - Measure one-pass UTF-8 features by accuracy contribution per CPU cost.
 - Fit deterministic, dependency-free estimators independently for each
   tokenizer family.
