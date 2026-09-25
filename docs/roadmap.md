@@ -110,13 +110,13 @@ Reference implementations and definitions:
 - [Google Gen AI Python local tokenizer](https://github.com/googleapis/python-genai/blob/main/google/genai/local_tokenizer.py)
 - [Google Gen AI tokenizer loader and pinned model mappings](https://github.com/googleapis/python-genai/blob/main/google/genai/_local_tokenizer_loader.py)
 
-## Model-based cost estimation (TODO)
+## Model-based cost estimation
 
 Cost estimation is a higher-level analytics feature and will accept a model,
 not a tokenizer. Tokenizers do not have prices; models and billing categories
 do.
 
-A future API may look like:
+The current API includes:
 
 ```python
 pl.col("text").tokens.estimate_cost(
@@ -125,8 +125,19 @@ pl.col("text").tokens.estimate_cost(
 )
 ```
 
-Initial GPT-5 support uses exact local token counts and a dated OpenAI USD
-snapshot. Before broadening that API:
+The current registry uses exact local token counts and dated direct OpenAI USD
+snapshots. The 2026-09-24 GPT-5 snapshot remains selectable after the
+2026-09-25 expansion. The 2026-09-25 rates per million text tokens are:
+
+| Model | Input | Cached input | Output | Source |
+|---|---:|---:|---:|---|
+| `gpt-4.1` | $2.00 | $0.50 | $8.00 | [OpenAI model page](https://developers.openai.com/api/docs/models/gpt-4.1) |
+| `gpt-4o` | $2.50 | $1.25 | $10.00 | [OpenAI model page](https://developers.openai.com/api/docs/models/gpt-4o) |
+| `gpt-5` | $1.25 | $0.125 | $10.00 | [OpenAI model page](https://developers.openai.com/api/docs/models/gpt-5) |
+
+The dates label the bundled observations, not provider-declared effective
+intervals. The API does not infer prices between snapshots. Before broadening
+the API further:
 
 - [x] Define input, cached-input, and output categories explicitly.
 - [x] Store price, currency, unit, provider, snapshot date, and registry
@@ -140,9 +151,8 @@ snapshot. Before broadening that API:
 - [x] Keep raw-text cost estimates distinct from full request costs, which may also
   include wrappers, tools, images, audio, or provider serialization.
 - [x] Test exact price-snapshot date boundaries and unknown/retired identifiers
-  outside the pinned model registry. The current price registry has one
-  snapshot; no historical price interval or live model-availability claim is
-  inferred from it.
+  outside the pinned model registry. No historical price interval or live
+  model-availability claim is inferred from the snapshots.
 - [x] Avoid runtime network access in DataFrame expressions.
 
 The initial operation should estimate the cost of the provided raw text in one

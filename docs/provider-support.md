@@ -1,6 +1,6 @@
 # Provider capability matrix
 
-Last reviewed: 2026-09-24.
+Last reviewed: 2026-09-25.
 
 This matrix describes `polars-tokenizer` support, not everything a provider's
 SDK or remote API can do. All three columns refer to raw UTF-8 text in a Polars
@@ -21,7 +21,7 @@ Status labels:
 
 | Provider / model family | Exact counting | Estimate counting | Cost estimation |
 |---|---|---|---|
-| **OpenAI** | **Available:** exact `o200k_base` and `cl100k_base` raw-text counts, plus a dated registry of exact model aliases. | **Planned:** separately trained and evaluated per tokenizer family. | **Available:** pinned GPT-5 USD input, cached-input, and output rates, plus caller-supplied USD-per-million overrides for exact-supported model aliases. More bundled price snapshots are planned. |
+| **OpenAI** | **Available:** exact `o200k_base` and `cl100k_base` raw-text counts, plus a dated registry of exact model aliases. | **Planned:** separately trained and evaluated per tokenizer family. | **Available:** pinned GPT-4.1, GPT-4o, and GPT-5 USD input, cached-input, and output rates, plus caller-supplied USD-per-million overrides for exact-supported model aliases. More bundled price snapshots are planned. |
 | **Google Gemini / Gemma** | **Prototype:** pinned Gemma 3 `SentencePiece` BPE kernel has exact local parity on the initial corpus. Artifact distribution, wider parity, Polars integration, and Gemma 4 remain gates. | **Planned:** Gemma 3 and Gemma 4 require separate error models. Google's remote `countTokens` is a reference/request-counting path, not this local estimator. | **Planned:** keyed by Gemini model and dated Google pricing snapshot; multimodal and request-level charges remain separate. |
 | **Anthropic Claude** | **Not local-exact:** current tokenizer definitions are not published as a stable local contract. Anthropic documents its message token-count result as an estimate, and its archived local tokenizer is inaccurate for Claude 3 and later. | **Research:** a local raw-text estimator is possible, but must be labeled independently from Anthropic's request-level count endpoint and evaluated per tokenizer generation. | **Planned:** exact-count mode will be unavailable until an exact definition exists; estimated-token cost may be supported with an explicit mode and dated model prices. |
 | **Mistral AI** | **Planned:** treat `SentencePiece` V1/V2/V3 and `tiktoken`-based Tekken as distinct, versioned tokenizer definitions. No Mistral family is implemented today. | **Planned:** separate estimators for `SentencePiece` and Tekken families. | **Planned:** keyed by Mistral API model and dated price snapshot; open-weight deployments require their serving provider. |

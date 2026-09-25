@@ -31,6 +31,32 @@ def test_gpt5_cost_categories(category: str, price_per_million: float) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("model", "category", "price_per_million"),
+    [
+        ("gpt-4.1", "input", Decimal("2.00")),
+        ("gpt-4.1", "cached_input", Decimal("0.50")),
+        ("gpt-4.1", "output", Decimal("8.00")),
+        ("gpt-4o", "input", Decimal("2.50")),
+        ("gpt-4o", "cached_input", Decimal("1.25")),
+        ("gpt-4o", "output", Decimal("10.00")),
+    ],
+)
+def test_new_model_price_snapshots(
+    model: tokens.Model, category: tokens.BillingCategory, price_per_million: Decimal
+) -> None:
+    price = tokens.price_info(model, category)
+    cost = pl.DataFrame({"text": ["hello world"]}).select(
+        tokens.estimate_cost("text", model=model, category=category)
+    )
+
+    assert price.price_per_unit == price_per_million
+    assert price.snapshot_date == "2026-09-25"
+    assert price.registry_version == tokens.PRICE_REGISTRY_VERSION
+    assert price.source_url.endswith(f"/models/{model}")
+    assert cost.item() == pytest.approx(2 * float(price_per_million) / 1_000_000)
+
+
 def test_cost_expr_namespace() -> None:
     result = (
         pl.DataFrame({"text": ["hello world"]})
@@ -74,7 +100,7 @@ def test_cost_details_include_exact_mode_and_pinned_price_metadata() -> None:
     assert values[0]["price_per_unit"] == "0.125"
     assert values[0]["unit_tokens"] == 1_000_000
     assert values[0]["price_source"] == "registry"
-    assert values[0]["price_snapshot_date"] == "2026-09-24"
+    assert values[0]["price_snapshot_date"] == tokens.PRICE_SNAPSHOT_DATE
     assert values[0]["price_registry_version"] == tokens.PRICE_REGISTRY_VERSION
     assert values[0]["price_source_url"].startswith("https://developers.openai.com/")
 
@@ -110,7 +136,7 @@ def test_price_metadata_is_pinned_and_inspectable() -> None:
     assert price.price_per_unit == Decimal("0.125")
     assert price.unit_tokens == 1_000_000
     assert price.price_per_token == Decimal("0.000000125")
-    assert price.snapshot_date == "2026-09-24"
+    assert price.snapshot_date == tokens.PRICE_SNAPSHOT_DATE
     assert price.registry_version == tokens.PRICE_REGISTRY_VERSION
     assert price.source_url.startswith("https://developers.openai.com/")
 
@@ -128,7 +154,17 @@ def test_explicit_snapshot_date_selects_the_pinned_price() -> None:
     assert result["estimate"].item()["price_snapshot_date"] == tokens.PRICE_SNAPSHOT_DATE
 
 
-@pytest.mark.parametrize("snapshot_date", ["2026-09-23", "2026-09-25"])
+def test_historical_gpt5_snapshot_remains_available() -> None:
+    price = tokens.price_info("gpt-5", "cached_input", snapshot_date="2026-09-24")
+
+    assert price.price_per_unit == Decimal("0.125")
+    assert price.snapshot_date == "2026-09-24"
+    assert price.registry_version == "openai-2026-09-24"
+    with pytest.raises(ValueError, match="no price snapshot for model"):
+        tokens.price_info("gpt-4.1", snapshot_date="2026-09-24")
+
+
+@pytest.mark.parametrize("snapshot_date", ["2026-09-23", "2026-09-26"])
 def test_price_snapshot_date_boundaries_fail_closed(snapshot_date: str) -> None:
     with pytest.raises(ValueError, match="no price snapshot for date"):
         tokens.price_info("gpt-5", snapshot_date=snapshot_date)

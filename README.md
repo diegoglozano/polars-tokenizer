@@ -23,7 +23,8 @@ Aliases are exact, not prefix matches, and are pinned by
 `polars_tokenizer.MODEL_REGISTRY_VERSION`. Pass a tokenizer when reproducibility
 should not depend on a provider model name.
 
-Raw-text cost estimation is available for models with a pinned price snapshot:
+Raw-text cost estimation is available for `gpt-4.1`, `gpt-4o`, and `gpt-5`
+with pinned direct OpenAI price snapshots:
 
 ```python
 costs = df.with_columns(
@@ -41,6 +42,8 @@ To select the bundled price snapshot explicitly, pass
 `estimate_cost()`, or `estimate_cost_details()`. The selector matches a snapshot
 date exactly; dates without a bundled snapshot fail. It does not infer a price
 for dates between snapshots or report whether a model is still served.
+The current snapshot is 2026-09-25; the 2026-09-24 GPT-5 snapshot remains
+selectable for reproducibility.
 
 For a cost column that carries its count mode and price provenance, use the
 structured form:
@@ -181,7 +184,8 @@ property-generated Unicode strings. Inputs are never normalized.
 ## Scope and roadmap
 
 The public surface currently includes exact counting, versioned OpenAI model
-aliases, pinned GPT-5 cost estimation with structured provenance, and
+aliases, pinned cost estimation for GPT-4.1, GPT-4o, and GPT-5 with structured
+provenance, and
 caller-supplied price overrides.
 Token-count estimation, cache controls, fused aggregations, and DataFrame-level
 analytics are not exposed yet. The next changes should be driven by profiles
