@@ -14,6 +14,10 @@ estimation.
   baselines with the benchmark matrix.
 - Profile pre-tokenization, BPE merging, output construction, and Polars
   integration independently.
+- A native component benchmark now separates borrowed-string counting,
+  `StringChunked` traversal, Arrow output construction, and output-only work.
+  It is a coarse comparison; pre-tokenization versus BPE still needs a
+  symbol-resolving profiler or explicit tokenizer instrumentation.
 - Implemented: categorical/enum inputs count each used dictionary value once
   with dense, sparse, and parallel physical-ID paths.
 - An experimental bounded whole-value cache benchmark now covers 0.01%,

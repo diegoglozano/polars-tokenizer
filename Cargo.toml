@@ -43,6 +43,10 @@ name = "cache_polars"
 harness = false
 
 [[bench]]
+name = "component_overhead"
+harness = false
+
+[[bench]]
 name = "gemma3_count"
 harness = false
 required-features = ["gemma3-prototype"]

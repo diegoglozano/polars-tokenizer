@@ -12,6 +12,7 @@ from benchmarks._data import (
     make_dataset,
 )
 from benchmarks.cache_polars import combine_case
+from benchmarks.component_overhead import combine_case as combine_components
 from benchmarks.gemini_local import (
     google_batch_total,
     google_scalar,
@@ -258,6 +259,39 @@ def test_combine_cache_cases_checks_dataset_and_output_parity() -> None:
         combine_case([baseline, cache_256, {**cache_4096, "dataset_sha256": "other"}])
     with pytest.raises(ValueError, match="output differs"):
         combine_case([baseline, cache_256, {**cache_4096, "counts_sha256": "other"}])
+
+
+def test_combine_component_cases_checks_dataset_and_output_parity() -> None:
+    baseline = {
+        "mode": "kernel_vec",
+        "tokenizer": "o200k_base",
+        "rows": 100_000,
+        "unique_values": 99_000,
+        "null_rows": 1_000,
+        "bytes": 12_672_000,
+        "dataset_sha256": "dataset",
+        "counts_sha256": "counts",
+        "total_tokens": 42,
+        "median_seconds": 1.0,
+    }
+    column_vec = {**baseline, "mode": "column_vec", "median_seconds": 1.1}
+    column_arrow = {**baseline, "mode": "column_arrow", "median_seconds": 1.2}
+    output_only = {**baseline, "mode": "output_only", "median_seconds": 0.1}
+    reports = [baseline, column_vec, column_arrow, output_only]
+
+    combined = combine_components(reports)
+    assert combined["time_ratio_vs_kernel_vec"] == {
+        "kernel_vec": 1.0,
+        "column_vec": 1.1,
+        "column_arrow": 1.2,
+        "output_only": 0.1,
+    }
+    with pytest.raises(ValueError, match="one report"):
+        combine_components(reports[:-1])
+    with pytest.raises(ValueError, match="datasets differ"):
+        combine_components([*reports[:-1], {**output_only, "dataset_sha256": "other"}])
+    with pytest.raises(ValueError, match="output differs"):
+        combine_components([*reports[:-1], {**output_only, "counts_sha256": "other"}])
 
 
 def test_gemini_benchmark_rate_uses_median_wall_time() -> None:

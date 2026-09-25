@@ -91,6 +91,30 @@ profile:
 4. BPE merging/counting;
 5. output-array construction.
 
+## Component overhead experiment
+
+Run the isolated native component comparison on a controlled host:
+
+```bash
+uv run --no-sync python -m benchmarks.component_overhead \
+  --repeats 7 --output /tmp/polars-tokenizer/component-overhead.json
+```
+
+Each subprocess uses the same 100,000-row, 128-byte, 1%-null, all-unique
+dataset. `kernel_vec` counts borrowed Python-free Rust strings into a vector;
+`column_vec` counts the same text through a Polars `StringChunked` iterator
+into a vector; `column_arrow` counts into a `UInt32Chunked`; `output_only`
+builds that Arrow output from precomputed counts. The driver checks dataset
+and every-row output hashes before comparing elapsed times. It reports warm
+medians and Linux process RSS. These modes isolate coarse integration costs,
+not tokenizer pre-tokenization versus BPE, and their times are not additive.
+Every process holds both the Rust string vector and Polars input column, plus
+precomputed counts, before timing; RSS is therefore not per-component memory.
+The output-only case has no input-throughput metric because it does not
+tokenize text.
+They also exclude the Python expression dispatcher and production parallel
+partitioning; use the end-to-end matrix alongside them.
+
 ## Whole-value cache crossover experiment
 
 Run the isolated Rust experiment before considering a string-column cache:

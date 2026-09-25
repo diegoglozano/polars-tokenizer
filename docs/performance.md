@@ -242,6 +242,24 @@ run-to-run noise; this does not establish the cache's memory cost. The
 experiment still excludes Python expression dispatch and parallel chunking.
 There is no automatic or public cache setting yet.
 
+### Native component cross-check
+
+The [isolated component experiment](benchmarking.md#component-overhead-experiment)
+used 100,000 rows, including 99,000 distinct 128-byte values and 1,000 nulls.
+Each mode ran in its own process for seven warm repetitions, with identical
+dataset and per-row count hashes. Shared-host median wall times were:
+
+| Tokenizer | Rust vector count | Polars input, vector output | Polars input, Arrow output | Arrow output only |
+|---|---:|---:|---:|---:|
+| `o200k_base` | 99.0 ms | 93.7 ms | 90.5 ms | 0.44 ms |
+| `cl100k_base` | 94.0 ms | 94.1 ms | 92.5 ms | 0.49 ms |
+
+For this workload, constructing the output from precomputed counts is small
+relative to exact counting. Differences among the three counting modes are
+within shared-host variation and do not establish an input or output layout
+speedup. Times are not additive, and this does not separate tokenizer
+pre-tokenization from BPE merging or include Python expression dispatch.
+
 ## Categorical fast path
 
 The same 100,000-row workload was run with string and categorical inputs after
