@@ -159,6 +159,8 @@ the API further:
 - [x] Resolve the model to its tokenizer independently from its price metadata.
 - [x] Report the token-count mode (`exact` or `estimate`) alongside the result
   through `estimate_cost_details()`. Current supported models all use `exact`.
+- [x] Include the exact counted tokens in `estimate_cost_details()` so the
+  applied rate and cost can be audited per row.
 - [x] Keep raw-text cost estimates distinct from full request costs, which may also
   include wrappers, tools, images, audio, or provider serialization.
 - [x] Test exact price-snapshot date boundaries and unknown/retired identifiers

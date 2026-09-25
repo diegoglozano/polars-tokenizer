@@ -46,8 +46,8 @@ example, one Llama model can have one tokenizer but different prices on
 self-hosting, Amazon Bedrock, Azure, Vertex AI, or another host. Likewise,
 Azure-hosted OpenAI pricing is not interchangeable with direct OpenAI pricing.
 
-`estimate_cost_details()` includes the model, serving provider, billing
-category, currency, unit, snapshot date, pricing-registry version, and
+`estimate_cost_details()` includes the counted tokens, model, serving provider,
+billing category, currency, unit, snapshot date, pricing-registry version, and
 token-count mode (`exact` or `estimate`) alongside the cost. Snapshot and
 serving-provider fields are null for caller-supplied rates because the package
 cannot verify them. The scalar `estimate_cost()` remains available for compact

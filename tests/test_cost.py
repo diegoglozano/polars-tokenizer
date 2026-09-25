@@ -88,6 +88,8 @@ def test_cost_details_include_exact_mode_and_pinned_price_metadata() -> None:
     )
     values = result["estimate"].to_list()
 
+    assert [value["token_count"] for value in values] == [2, None, 0]
+    assert result["estimate"].struct.field("token_count").dtype == pl.UInt32
     assert values[0]["cost_usd"] == pytest.approx(2 * 0.125 / 1_000_000)
     assert values[1]["cost_usd"] is None
     assert values[2]["cost_usd"] == 0.0
@@ -116,6 +118,7 @@ def test_cost_details_label_caller_override_without_inventing_price_snapshot() -
     value = result["estimate"].item()
 
     assert value["cost_usd"] == pytest.approx(2 * 3.5 / 1_000_000)
+    assert value["token_count"] == 2
     assert value["token_count_mode"] == "exact"
     assert value["model"] == "gpt-4"
     assert value["price_per_unit"] == "3.50"
@@ -124,6 +127,13 @@ def test_cost_details_label_caller_override_without_inventing_price_snapshot() -
     assert value["price_snapshot_date"] is None
     assert value["price_registry_version"] is None
     assert value["price_source_url"] is None
+
+
+def test_cost_details_optimized_plan_shares_token_count() -> None:
+    expression = tokens.estimate_cost_details("text", model="gpt-5")
+    plan = pl.DataFrame({"text": ["hello"]}).lazy().select(expression).explain()
+
+    assert plan.count(":token_count()") == 1
 
 
 def test_price_metadata_is_pinned_and_inspectable() -> None:
