@@ -71,6 +71,27 @@ profile:
 4. BPE merging/counting;
 5. output-array construction.
 
+## Whole-value cache crossover experiment
+
+Run the isolated Rust experiment before considering a string-column cache:
+
+```bash
+cargo bench --bench cache_crossover
+```
+
+It compares uncached count-only calls with 256-entry and 4,096-entry bounded
+FIFO caches for both exact tokenizers. Each case has 100,000 shuffled 128-byte
+values and a guaranteed cardinality of 0.01%, 0.1%, 1%, 10%, 50%, or 100%.
+The benchmark recreates the cache and output vector on every iteration,
+checks exact count parity before timing, and reports cache hits and maximum
+entries. Keys borrow from the stable input strings, so the experiment does not
+measure key-copying costs.
+
+These are kernel-level results, not a Polars expression or an automatic-cache
+policy. They exclude Arrow output construction, null handling, parallel
+dispatch, and process peak RSS. Compare them with the end-to-end matrix and
+repeat on a controlled host before making a runtime change.
+
 ## Gemini/Gemma 3 local baseline
 
 The optional Gemini benchmark deliberately does not add Google's tokenizer or
