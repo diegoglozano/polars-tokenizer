@@ -1418,6 +1418,7 @@ dependencies = [
  "sentencepiece-model",
  "serde",
  "serde_json",
+ "sha2",
  "tiktoken",
 ]
 

@@ -92,6 +92,25 @@ policy. They exclude Arrow output construction, null handling, parallel
 dispatch, and process peak RSS. Compare them with the end-to-end matrix and
 repeat on a controlled host before making a runtime change.
 
+The follow-up Polars-output experiment constructs a real `StringChunked`,
+counts into a `UInt32Chunked`, and runs each uncached/256-entry/4,096-entry mode
+in its own process:
+
+```bash
+uv run --no-sync python -m benchmarks.cache_polars \
+  --tokenizers o200k_base,cl100k_base \
+  --cardinalities 0.0001,0.001,0.01,0.1,0.5,1.0 \
+  --repeats 5 --output /tmp/polars-tokenizer/cache-polars.json
+```
+
+Use `--null-rows 1000` for a 1% null workload. The driver requires identical
+dataset and per-row count hashes across modes. It reports warm wall time and,
+on Linux, process RSS before and after counting plus process high-water RSS.
+RSS includes Python-free native setup and the input column; it is not an
+allocation count. This remains a benchmark-only prototype: it does not include
+the Python/Polars expression dispatcher or parallel chunking, and it does not
+enable a cache in production.
+
 ## Gemini/Gemma 3 local baseline
 
 The optional Gemini benchmark deliberately does not add Google's tokenizer or

@@ -28,6 +28,7 @@ tiktoken = { version = "=4.1.2", default-features = false, features = ["vocab-cl
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
 serde_json = "1.0"
+sha2 = "0.10"
 
 [[bench]]
 name = "exact_count"
@@ -35,6 +36,10 @@ harness = false
 
 [[bench]]
 name = "cache_crossover"
+harness = false
+
+[[bench]]
+name = "cache_polars"
 harness = false
 
 [[bench]]
