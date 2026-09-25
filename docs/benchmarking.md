@@ -100,9 +100,10 @@ up to its next full repetition, and Criterion records actual byte throughput:
 cargo bench --bench exact_count -- core_count_vs_encode
 ```
 
-Each pair checks count/ID-length parity before timing. `encode()` materializes
-IDs, while `count()` can use the crate's internal piece cache; the comparison
-is the full public operation difference, not an allocation-only measurement.
+Each pair checks count/ID-length parity before timing. Both operations use
+the crate's internal piece cache, while `encode()` materializes IDs; the
+comparison is the full public operation difference, not an allocation-only
+measurement.
 
 ## Component overhead experiment
 

@@ -293,10 +293,10 @@ per case. The observed encode-time/count-time median ratios were:
 | 128 KiB | 1.16x | 1.03x |
 
 These are not controlled-host speedups; several pairs are within measurement
-variation. The count path also uses the crate's internal piece cache, so the
-difference cannot be attributed only to avoiding token-ID allocation. The
-corpus is a repeated sample and the labels are size targets rather than exact
-byte lengths.
+variation. Both paths use the crate's internal piece cache, so the difference
+cannot be attributed only to avoiding token-ID allocation. The corpus is a
+repeated sample, and the labels are size targets rather than exact byte
+lengths.
 
 ## Categorical fast path
 
