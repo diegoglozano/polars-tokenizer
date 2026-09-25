@@ -14,6 +14,9 @@ estimation.
   baselines with the benchmark matrix.
 - Profile pre-tokenization, BPE merging, output construction, and Polars
   integration independently.
+- The Criterion harness now pairs direct count-only and token-ID encoding on
+  identical strings; this measures their public-operation difference, not a
+  clean separation of allocation and BPE work.
 - A native component benchmark now separates borrowed-string counting,
   `StringChunked` traversal, Arrow output construction, and output-only work
   across 24-, 128-, and 2,048-byte rows.

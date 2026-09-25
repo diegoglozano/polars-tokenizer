@@ -91,6 +91,20 @@ profile:
 4. BPE merging/counting;
 5. output-array construction.
 
+The Criterion kernel harness also compares direct `CoreBpe::count()` with
+`CoreBpe::encode()` on identical strings for both tokenizers. Case labels use
+32-byte, 256-byte, 4-KiB, and 128-KiB targets; the repeated sample is rounded
+up to its next full repetition, and Criterion records actual byte throughput:
+
+```bash
+cargo bench --bench exact_count -- core_count_vs_encode
+```
+
+Each pair checks count/ID-length parity before timing. Both operations use
+the crate's internal piece cache, while `encode()` materializes IDs; the
+comparison is the full public operation difference, not an allocation-only
+measurement.
+
 ## Component overhead experiment
 
 Run the isolated native component comparison on a controlled host:
