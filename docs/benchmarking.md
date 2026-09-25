@@ -92,9 +92,9 @@ profile:
 5. output-array construction.
 
 The Criterion kernel harness also compares direct `CoreBpe::count()` with
-`CoreBpe::encode()` on identical strings for both tokenizers. Case labels use
-32-byte, 256-byte, 4-KiB, and 128-KiB targets; the repeated sample is rounded
-up to its next full repetition, and Criterion records actual byte throughput:
+`CoreBpe::encode()` on identical strings for both tokenizers. Cases contain
+exactly 32 bytes, 256 bytes, 4 KiB, or 128 KiB, and Criterion records their
+actual byte throughput:
 
 ```bash
 cargo bench --bench exact_count -- core_count_vs_encode

@@ -5,7 +5,16 @@ use polars_tokenizer::{count_cl100k, count_o200k};
 
 fn corpus(target_bytes: usize) -> String {
     const SAMPLE: &str = "The quick brown fox jumps over 13 lazy dogs. 你好👋\n";
-    SAMPLE.repeat(target_bytes.div_ceil(SAMPLE.len()))
+    let mut text = String::with_capacity(target_bytes);
+    for ch in SAMPLE.chars().cycle() {
+        if text.len() + ch.len_utf8() > target_bytes {
+            break;
+        }
+        text.push(ch);
+    }
+    text.extend(std::iter::repeat_n('x', target_bytes - text.len()));
+    assert_eq!(text.len(), target_bytes);
+    text
 }
 
 fn benchmark_exact_count(c: &mut Criterion) {

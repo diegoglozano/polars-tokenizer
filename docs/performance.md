@@ -287,16 +287,17 @@ per case. The observed encode-time/count-time median ratios were:
 
 | Target size | `o200k_base` | `cl100k_base` |
 |---:|---:|---:|
-| 32 B | 1.10x | 1.12x |
-| 256 B | 1.08x | 1.05x |
-| 4 KiB | 1.10x | 1.01x |
-| 128 KiB | 1.16x | 1.03x |
+| 32 B | 1.13x | 1.27x |
+| 256 B | 1.11x | 1.08x |
+| 4 KiB | 1.05x | 1.10x |
+| 128 KiB | 1.13x | 1.08x |
 
 These are not controlled-host speedups; several pairs are within measurement
 variation. Both paths use the crate's internal piece cache, so the difference
 cannot be attributed only to avoiding token-ID allocation. The corpus is a
-repeated sample, and the labels are size targets rather than exact byte
-lengths.
+repeated sample at the exact byte sizes shown; its text mix also changes at
+the smallest size. Ratios compare count and encode within this same run, not
+Criterion's historical baseline from the earlier rounded-size corpus.
 
 ## Categorical fast path
 
