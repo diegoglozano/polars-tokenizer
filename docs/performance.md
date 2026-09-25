@@ -194,6 +194,29 @@ At 100%, neither cache hit. This experiment excludes Polars dispatch,
 Arrow output construction, nulls, parallelism, and peak RSS. It does not
 justify a runtime cache policy yet.
 
+### Polars-output cache cross-check
+
+The follow-up [isolated Polars-output experiment](benchmarking.md#whole-value-cache-crossover-experiment)
+includes `StringChunked` iteration and `UInt32Chunked` output construction.
+Each cache mode ran in a fresh process on the same 100,000-row, 128-byte
+corpus, with five warm repetitions and per-row output-hash parity. These
+shared-host speedups are relative to uncached counting within the same case:
+
+| Cardinality | `o200k_base` 256 | `o200k_base` 4,096 | `cl100k_base` 256 | `cl100k_base` 4,096 |
+|---:|---:|---:|---:|---:|
+| 0.01% | 13.77x | 11.71x | 14.24x | 14.42x |
+| 0.1% | 12.96x | 16.29x | 14.44x | 11.86x |
+| 1% | 1.09x | 10.88x | 0.99x | 10.88x |
+| 10% | 0.85x | 1.08x | 0.90x | 1.33x |
+| 50% | 0.83x | 0.87x | 0.84x | 0.85x |
+| 100% | 0.88x | 0.76x | 0.88x | 0.85x |
+
+The 1% null smoke case also preserved output parity. Process peak RSS varied
+by less than about 0.3 MiB between modes within these cases, comparable to
+run-to-run noise; this does not establish the cache's memory cost. The
+experiment still excludes Python expression dispatch and parallel chunking.
+There is no automatic or public cache setting yet.
+
 ## Categorical fast path
 
 The same 100,000-row workload was run with string and categorical inputs after

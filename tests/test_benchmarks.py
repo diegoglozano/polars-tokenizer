@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from benchmarks._data import CONTENT_TYPES, dataset_digest, dataset_statistics, make_dataset
+from benchmarks.cache_polars import combine_case
 from benchmarks.gemini_local import (
     google_batch_total,
     google_scalar,
@@ -183,6 +184,37 @@ def test_combine_reports_keeps_isolated_memory_and_checks_parity() -> None:
     plugin["implementation"] = "all"
     with pytest.raises(ValueError, match="isolated plugin"):
         combine_reports(plugin, None)
+
+
+def test_combine_cache_cases_checks_dataset_and_output_parity() -> None:
+    baseline = {
+        "mode": "uncached",
+        "tokenizer": "o200k_base",
+        "rows": 100_000,
+        "unique_values": 1_000,
+        "null_rows": 0,
+        "bytes": 12_800_000,
+        "dataset_sha256": "dataset",
+        "counts_sha256": "counts",
+        "total_tokens": 42,
+        "median_seconds": 1.0,
+    }
+    cache_256 = {**baseline, "mode": "cache_256", "median_seconds": 0.5}
+    cache_4096 = {**baseline, "mode": "cache_4096", "median_seconds": 0.25}
+
+    combined = combine_case([baseline, cache_256, cache_4096])
+    assert combined["speedup_vs_uncached"] == {
+        "uncached": 1.0,
+        "cache_256": 2.0,
+        "cache_4096": 4.0,
+    }
+
+    with pytest.raises(ValueError, match="one report"):
+        combine_case([baseline, cache_256, cache_256])
+    with pytest.raises(ValueError, match="datasets differ"):
+        combine_case([baseline, cache_256, {**cache_4096, "dataset_sha256": "other"}])
+    with pytest.raises(ValueError, match="output differs"):
+        combine_case([baseline, cache_256, {**cache_4096, "counts_sha256": "other"}])
 
 
 def test_gemini_benchmark_rate_uses_median_wall_time() -> None:
