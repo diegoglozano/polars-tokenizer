@@ -3,6 +3,7 @@
 from polars_tokenizer._api import TokenExprNameSpace, count, estimate_cost, estimate_cost_details
 from polars_tokenizer._pricing import (
     PRICE_REGISTRY_VERSION,
+    PRICE_SNAPSHOT_DATE,
     BillingCategory,
     PricedModel,
     PriceInfo,
@@ -14,6 +15,7 @@ from polars_tokenizer._registry import MODEL_REGISTRY_VERSION, Model, ModelInfo,
 __all__ = [
     "MODEL_REGISTRY_VERSION",
     "PRICE_REGISTRY_VERSION",
+    "PRICE_SNAPSHOT_DATE",
     "BillingCategory",
     "Model",
     "ModelInfo",

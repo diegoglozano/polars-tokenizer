@@ -68,14 +68,18 @@ def estimate_cost(
     model: Model,
     category: BillingCategory = "input",
     usd_per_million_tokens: UsdPerMillionOverride | None = None,
+    snapshot_date: str | None = None,
 ) -> pl.Expr:
     """Estimate raw-text cost in USD using exact counts and pinned pricing.
 
     This excludes chat wrappers, tools, images, audio, and every other piece of
     request-level accounting. Null input produces null output. A caller may
-    replace the registry rate with an explicit USD-per-million-token value.
+    replace the registry rate with an explicit USD-per-million-token value or
+    select an exact bundled snapshot date.
     """
-    price_per_token = resolve_price_per_token(model, category, usd_per_million_tokens)
+    price_per_token = resolve_price_per_token(
+        model, category, usd_per_million_tokens, snapshot_date=snapshot_date
+    )
     return count(expr, model=model).cast(pl.Float64) * float(price_per_token)
 
 
@@ -85,25 +89,29 @@ def estimate_cost_details(
     model: Model,
     category: BillingCategory = "input",
     usd_per_million_tokens: UsdPerMillionOverride | None = None,
+    snapshot_date: str | None = None,
 ) -> pl.Expr:
     """Return a struct with raw-text cost, count mode, and price provenance.
 
     The `cost_usd` field is null for null input; metadata fields remain present.
     Caller-supplied rates have no pinned snapshot or known serving provider.
+    `snapshot_date` selects one exact bundled price snapshot.
     """
-    price_per_token = resolve_price_per_token(model, category, usd_per_million_tokens)
+    price_per_token = resolve_price_per_token(
+        model, category, usd_per_million_tokens, snapshot_date=snapshot_date
+    )
     if usd_per_million_tokens is None:
-        price = price_info(model, category)
+        price = price_info(model, category, snapshot_date=snapshot_date)
         price_per_unit = price.price_per_unit
         serving_provider = price.serving_provider
-        snapshot_date = price.snapshot_date
+        selected_snapshot_date = price.snapshot_date
         registry_version = price.registry_version
         source_url = price.source_url
         price_source = "registry"
     else:
         price_per_unit = Decimal(str(usd_per_million_tokens))
         serving_provider = None
-        snapshot_date = None
+        selected_snapshot_date = None
         registry_version = None
         source_url = None
         price_source = "caller_override"
@@ -119,7 +127,7 @@ def estimate_cost_details(
         price_per_unit=pl.lit(str(price_per_unit)),
         unit_tokens=pl.lit(1_000_000),
         price_source=pl.lit(price_source),
-        price_snapshot_date=pl.lit(snapshot_date, dtype=pl.String),
+        price_snapshot_date=pl.lit(selected_snapshot_date, dtype=pl.String),
         price_registry_version=pl.lit(registry_version, dtype=pl.String),
         price_source_url=pl.lit(source_url, dtype=pl.String),
     )
@@ -147,6 +155,7 @@ class TokenExprNameSpace:
         model: Model,
         category: BillingCategory = "input",
         usd_per_million_tokens: UsdPerMillionOverride | None = None,
+        snapshot_date: str | None = None,
     ) -> pl.Expr:
         """Estimate raw-text cost in USD from exact local token counts."""
         return estimate_cost(
@@ -154,6 +163,7 @@ class TokenExprNameSpace:
             model=model,
             category=category,
             usd_per_million_tokens=usd_per_million_tokens,
+            snapshot_date=snapshot_date,
         )
 
     def estimate_cost_details(
@@ -162,6 +172,7 @@ class TokenExprNameSpace:
         model: Model,
         category: BillingCategory = "input",
         usd_per_million_tokens: UsdPerMillionOverride | None = None,
+        snapshot_date: str | None = None,
     ) -> pl.Expr:
         """Return a struct with cost, token-count mode, and price provenance."""
         return estimate_cost_details(
@@ -169,4 +180,5 @@ class TokenExprNameSpace:
             model=model,
             category=category,
             usd_per_million_tokens=usd_per_million_tokens,
+            snapshot_date=snapshot_date,
         )
