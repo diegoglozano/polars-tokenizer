@@ -11,12 +11,13 @@ from polars_tokenizer._registry import Model, resolve_model
 
 BillingCategory: TypeAlias = Literal["cached_input", "input", "output"]
 Currency: TypeAlias = Literal["USD"]
-PricedModel: TypeAlias = Literal["gpt-5"]
+PricedModel: TypeAlias = Literal["gpt-4.1", "gpt-4o", "gpt-5"]
 UsdPerMillionOverride: TypeAlias = Decimal | int | float
 
-PRICE_REGISTRY_VERSION = "openai-2026-09-24"
-PRICE_SNAPSHOT_DATE = "2026-09-24"
+PRICE_SNAPSHOT_DATE = "2026-09-25"
+PRICE_REGISTRY_VERSION = f"openai-{PRICE_SNAPSHOT_DATE}"
 _UNIT_TOKENS = 1_000_000
+_BILLING_CATEGORIES: tuple[BillingCategory, ...] = ("input", "cached_input", "output")
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,10 +40,36 @@ class PriceInfo:
         return self.price_per_unit / self.unit_tokens
 
 
-_GPT5_PRICES: dict[BillingCategory, Decimal] = {
-    "input": Decimal("1.25"),
-    "cached_input": Decimal("0.125"),
-    "output": Decimal("10.00"),
+_PRICE_SNAPSHOTS: dict[str, dict[str, dict[BillingCategory, Decimal]]] = {
+    "2026-09-24": {
+        "gpt-5": {
+            "input": Decimal("1.25"),
+            "cached_input": Decimal("0.125"),
+            "output": Decimal("10.00"),
+        }
+    },
+    "2026-09-25": {
+        "gpt-4.1": {
+            "input": Decimal("2.00"),
+            "cached_input": Decimal("0.50"),
+            "output": Decimal("8.00"),
+        },
+        "gpt-4o": {
+            "input": Decimal("2.50"),
+            "cached_input": Decimal("1.25"),
+            "output": Decimal("10.00"),
+        },
+        "gpt-5": {
+            "input": Decimal("1.25"),
+            "cached_input": Decimal("0.125"),
+            "output": Decimal("10.00"),
+        },
+    },
+}
+_PRICE_SOURCE_URLS = {
+    "gpt-4.1": "https://developers.openai.com/api/docs/models/gpt-4.1",
+    "gpt-4o": "https://developers.openai.com/api/docs/models/gpt-4o",
+    "gpt-5": "https://developers.openai.com/api/docs/models/gpt-5",
 }
 
 
@@ -57,11 +84,9 @@ def _resolve_snapshot_date(snapshot_date: str | None) -> str:
     if parsed.isoformat() != snapshot_date:
         msg = "snapshot_date must be an ISO date in YYYY-MM-DD format"
         raise ValueError(msg)
-    if snapshot_date != PRICE_SNAPSHOT_DATE:
-        msg = (
-            f"no price snapshot for date {snapshot_date!r}; "
-            f"available snapshot dates: {PRICE_SNAPSHOT_DATE}"
-        )
+    if snapshot_date not in _PRICE_SNAPSHOTS:
+        available = ", ".join(sorted(_PRICE_SNAPSHOTS))
+        msg = f"no price snapshot for date {snapshot_date!r}; available snapshot dates: {available}"
         raise ValueError(msg)
     return snapshot_date
 
@@ -78,16 +103,18 @@ def price_info(
     resolve_model(model)
     selected_date = _resolve_snapshot_date(snapshot_date)
 
-    if model != "gpt-5":
+    snapshot = _PRICE_SNAPSHOTS[selected_date]
+    if model not in snapshot:
+        priced_models = ", ".join(sorted(snapshot))
         msg = (
             f"no price snapshot for model {model!r} in price registry "
-            f"{PRICE_REGISTRY_VERSION}; priced models: gpt-5"
+            f"openai-{selected_date}; priced models: {priced_models}"
         )
         raise ValueError(msg)
     try:
-        price = _GPT5_PRICES[category]
+        price = snapshot[model][category]
     except KeyError:
-        supported = ", ".join(_GPT5_PRICES)
+        supported = ", ".join(_BILLING_CATEGORIES)
         msg = f"unsupported billing category {category!r}; supported categories: {supported}"
         raise ValueError(msg) from None
 
@@ -99,8 +126,8 @@ def price_info(
         price_per_unit=price,
         unit_tokens=_UNIT_TOKENS,
         snapshot_date=selected_date,
-        registry_version=PRICE_REGISTRY_VERSION,
-        source_url="https://developers.openai.com/api/docs/models/gpt-5",
+        registry_version=f"openai-{selected_date}",
+        source_url=_PRICE_SOURCE_URLS[model],
     )
 
 
@@ -119,8 +146,8 @@ def resolve_price_per_token(
     if snapshot_date is not None:
         msg = "snapshot_date cannot be combined with usd_per_million_tokens"
         raise ValueError(msg)
-    if category not in _GPT5_PRICES:
-        supported = ", ".join(_GPT5_PRICES)
+    if category not in _BILLING_CATEGORIES:
+        supported = ", ".join(_BILLING_CATEGORIES)
         msg = f"unsupported billing category {category!r}; supported categories: {supported}"
         raise ValueError(msg)
     if isinstance(usd_per_million_tokens, bool):
