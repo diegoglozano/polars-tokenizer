@@ -208,3 +208,11 @@ forced at 0.01%, 0.1%, 1%, 10%, 50%, and 100% cardinality. Before adding an
 estimator, freeze a held-out corpus and report MAE, median absolute error, MAPE,
 p50/p95/p99/max relative error, and bias by language, content type, length, true
 count, and ASCII/non-ASCII class.
+
+`benchmarks.estimator_eval.score_predictions()` implements those summaries for
+supplied exact counts and estimates, including each listed stratum. It buckets
+UTF-8 lengths at 24, 128, and 2,048 bytes and exact token counts at 0, 8, 32,
+and 128. Percentage errors exclude zero-token references (which remain in
+absolute-error and bias metrics); percentile errors use nearest-rank. This is
+evaluation plumbing only. No training corpus, held-out corpus, fitted estimator,
+or accuracy claim is included yet.
