@@ -16,13 +16,15 @@ from benchmarks.run import machine_metadata
 ROOT = Path(__file__).resolve().parents[1]
 TOKENIZERS = ("o200k_base", "cl100k_base")
 MODES = ("kernel_vec", "column_vec", "column_arrow", "output_only")
+LENGTH_BYTES = {"tiny": 24, "short": 128, "medium": 2_048}
 
 
-def run_mode(tokenizer: str, repeats: int, mode: str) -> dict[str, Any]:
+def run_mode(tokenizer: str, target_bytes: int, repeats: int, mode: str) -> dict[str, Any]:
     environment = {
         **os.environ,
         "POLARS_TOKENIZER_COMPONENT_MODE": mode,
         "POLARS_TOKENIZER_COMPONENT_TOKENIZER": tokenizer,
+        "POLARS_TOKENIZER_COMPONENT_TARGET_BYTES": str(target_bytes),
         "POLARS_TOKENIZER_COMPONENT_REPEATS": str(repeats),
     }
     completed = subprocess.run(
@@ -43,7 +45,15 @@ def combine_case(reports: list[dict[str, Any]]) -> dict[str, Any]:
     if len(reports) != len(MODES) or set(by_mode) != set(MODES):
         raise ValueError("expected one report for each component mode")
     baseline = by_mode["kernel_vec"]
-    identity = ("tokenizer", "rows", "null_rows", "unique_values", "bytes", "dataset_sha256")
+    identity = (
+        "tokenizer",
+        "rows",
+        "target_bytes",
+        "null_rows",
+        "unique_values",
+        "bytes",
+        "dataset_sha256",
+    )
     for report in reports:
         if any(report[field] != baseline[field] for field in identity):
             raise ValueError("isolated component datasets differ")
@@ -65,6 +75,9 @@ def combine_case(reports: list[dict[str, Any]]) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tokenizers", nargs="+", default=list(TOKENIZERS), choices=TOKENIZERS)
+    parser.add_argument(
+        "--lengths", nargs="+", default=list(LENGTH_BYTES), choices=tuple(LENGTH_BYTES)
+    )
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -73,13 +86,14 @@ def main() -> None:
 
     cases = []
     for tokenizer in args.tokenizers:
-        reports = []
-        for mode in MODES:
-            print(f"{tokenizer} mode={mode}", file=sys.stderr, flush=True)
-            reports.append(run_mode(tokenizer, args.repeats, mode))
-        cases.append(combine_case(reports))
+        for length in args.lengths:
+            reports = []
+            for mode in MODES:
+                print(f"{tokenizer} length={length} mode={mode}", file=sys.stderr, flush=True)
+                reports.append(run_mode(tokenizer, LENGTH_BYTES[length], args.repeats, mode))
+            cases.append({"length": length, **combine_case(reports)})
     result = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "environment": machine_metadata(None),
         "cases": cases,

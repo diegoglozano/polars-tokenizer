@@ -15,7 +15,8 @@ estimation.
 - Profile pre-tokenization, BPE merging, output construction, and Polars
   integration independently.
 - A native component benchmark now separates borrowed-string counting,
-  `StringChunked` traversal, Arrow output construction, and output-only work.
+  `StringChunked` traversal, Arrow output construction, and output-only work
+  across 24-, 128-, and 2,048-byte rows.
   It is a coarse comparison; pre-tokenization versus BPE still needs a
   symbol-resolving profiler or explicit tokenizer instrumentation.
 - Implemented: categorical/enum inputs count each used dictionary value once

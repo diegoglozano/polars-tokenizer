@@ -12,7 +12,7 @@ use sha2::{Digest, Sha256};
 use tiktoken::CoreBpe;
 
 const ROWS: usize = 100_000;
-const TARGET_BYTES: usize = 128;
+const TARGET_BYTES_ENV: &str = "POLARS_TOKENIZER_COMPONENT_TARGET_BYTES";
 const SAMPLE: &str = "The quick brown fox jumps over 13 lazy dogs. 你好👋 ";
 const MODE_ENV: &str = "POLARS_TOKENIZER_COMPONENT_MODE";
 const TOKENIZER_ENV: &str = "POLARS_TOKENIZER_COMPONENT_TOKENIZER";
@@ -23,23 +23,23 @@ enum BenchmarkOutput {
     Arrow(UInt32Chunked),
 }
 
-fn make_value(index: usize) -> String {
+fn make_value(index: usize, target_bytes: usize) -> String {
     let suffix = format!(" [{index}]");
-    let mut value = String::with_capacity(TARGET_BYTES);
-    while value.len() + SAMPLE.len() + suffix.len() <= TARGET_BYTES {
+    let mut value = String::with_capacity(target_bytes);
+    while value.len() + SAMPLE.len() + suffix.len() <= target_bytes {
         value.push_str(SAMPLE);
     }
-    while value.len() + suffix.len() < TARGET_BYTES {
+    while value.len() + suffix.len() < target_bytes {
         value.push('x');
     }
     value.push_str(&suffix);
-    assert_eq!(value.len(), TARGET_BYTES);
+    assert_eq!(value.len(), target_bytes);
     value
 }
 
-fn make_input() -> Vec<Option<String>> {
+fn make_input(target_bytes: usize) -> Vec<Option<String>> {
     (0..ROWS)
-        .map(|index| (index % 100 != 0).then(|| make_value(index)))
+        .map(|index| (index % 100 != 0).then(|| make_value(index, target_bytes)))
         .collect()
 }
 
@@ -139,11 +139,16 @@ fn median(values: &[f64]) -> f64 {
 fn run() {
     let mode = env::var(MODE_ENV).expect("mode must be selected by the driver");
     let tokenizer = env::var(TOKENIZER_ENV).expect("tokenizer must be selected by the driver");
+    let target_bytes = env::var(TARGET_BYTES_ENV)
+        .expect("target bytes must be selected by the driver")
+        .parse::<usize>()
+        .expect("target bytes must be an integer");
     let repeats = env::var(REPEATS_ENV)
         .unwrap_or_else(|_| "5".to_owned())
         .parse::<usize>()
         .expect("repeats must be an integer");
     assert!(repeats > 0);
+    assert!(matches!(target_bytes, 24 | 128 | 2_048));
     assert!(matches!(tokenizer.as_str(), "o200k_base" | "cl100k_base"));
     assert!(matches!(
         mode.as_str(),
@@ -151,7 +156,7 @@ fn run() {
     ));
 
     let encoding = tiktoken::get_encoding(&tokenizer).expect("vocabulary must be compiled in");
-    let values = make_input();
+    let values = make_input(target_bytes);
     let strings = StringChunked::from_iter_options(
         "text".into(),
         values.iter().map(|value| value.as_deref()),
@@ -192,10 +197,11 @@ fn run() {
             / (1024.0 * 1024.0)
     });
     let report = json!({
-        "schema_version": 1,
+        "schema_version": 2,
         "mode": mode,
         "tokenizer": tokenizer,
         "rows": ROWS,
+        "target_bytes": target_bytes,
         "null_rows": ROWS / 100,
         "unique_values": ROWS - ROWS / 100,
         "bytes": bytes,
