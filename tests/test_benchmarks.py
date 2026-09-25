@@ -266,6 +266,7 @@ def test_combine_component_cases_checks_dataset_and_output_parity() -> None:
         "mode": "kernel_vec",
         "tokenizer": "o200k_base",
         "rows": 100_000,
+        "target_bytes": 128,
         "unique_values": 99_000,
         "null_rows": 1_000,
         "bytes": 12_672_000,
@@ -290,6 +291,8 @@ def test_combine_component_cases_checks_dataset_and_output_parity() -> None:
         combine_components(reports[:-1])
     with pytest.raises(ValueError, match="datasets differ"):
         combine_components([*reports[:-1], {**output_only, "dataset_sha256": "other"}])
+    with pytest.raises(ValueError, match="datasets differ"):
+        combine_components([*reports[:-1], {**output_only, "target_bytes": 24}])
     with pytest.raises(ValueError, match="output differs"):
         combine_components([*reports[:-1], {**output_only, "counts_sha256": "other"}])
 

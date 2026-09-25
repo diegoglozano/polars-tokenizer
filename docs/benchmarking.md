@@ -97,11 +97,13 @@ Run the isolated native component comparison on a controlled host:
 
 ```bash
 uv run --no-sync python -m benchmarks.component_overhead \
-  --repeats 7 --output /tmp/polars-tokenizer/component-overhead.json
+  --lengths tiny short medium --repeats 7 \
+  --output /tmp/polars-tokenizer/component-overhead.json
 ```
 
-Each subprocess uses the same 100,000-row, 128-byte, 1%-null, all-unique
-dataset. `kernel_vec` counts borrowed Python-free Rust strings into a vector;
+Each subprocess uses a deterministic 100,000-row, 1%-null, all-unique dataset
+with 24-, 128-, or 2,048-byte non-null values. `kernel_vec` counts borrowed
+Python-free Rust strings into a vector;
 `column_vec` counts the same text through a Polars `StringChunked` iterator
 into a vector; `column_arrow` counts into a `UInt32Chunked`; `output_only`
 builds that Arrow output from precomputed counts. The driver checks dataset
@@ -111,9 +113,11 @@ not tokenizer pre-tokenization versus BPE, and their times are not additive.
 Every process holds both the Rust string vector and Polars input column, plus
 precomputed counts, before timing; RSS is therefore not per-component memory.
 The output-only case has no input-throughput metric because it does not
-tokenize text.
-They also exclude the Python expression dispatcher and production parallel
-partitioning; use the end-to-end matrix alongside them.
+tokenize text. These modes also exclude the Python expression dispatcher and
+production parallel partitioning; use the end-to-end matrix alongside them.
+The 24-byte values contain ASCII padding and a unique suffix; longer values
+also contain the repeated multilingual sample. Treat the sweep as a length
+and content workload comparison, not a controlled length-only experiment.
 
 ## Whole-value cache crossover experiment
 

@@ -260,6 +260,23 @@ within shared-host variation and do not establish an input or output layout
 speedup. Times are not additive, and this does not separate tokenizer
 pre-tokenization from BPE merging or include Python expression dispatch.
 
+The follow-up length sweep retained the same 100,000 rows, 1% nulls, four
+modes, and output-hash parity, with seven warm repeats for each of two
+tokenizers. Across both tokenizers and all three counting modes, shared-host
+median times were:
+
+| Non-null row bytes | Counting range | Output-only range |
+|---:|---:|---:|
+| 24 | 7.5–9.0 ms | 0.34–0.45 ms |
+| 128 | 91–104 ms | 0.34–0.35 ms |
+| 2,048 | 1.57–1.65 s | 0.35–0.58 ms |
+
+Output construction is more visible for tiny values, but counting remains the
+larger cost here. The tiny generator uses ASCII padding while the longer
+values include repeated multilingual text, so this is not a pure length
+scaling curve. Shared-host variation also prevents ranking the three counting
+modes from these measurements.
+
 ## Categorical fast path
 
 The same 100,000-row workload was run with string and categorical inputs after
