@@ -44,6 +44,9 @@ estimation.
 - Added a reproducible, checksum-pinned Common Voice CC0 sentence candidate:
   3,200 prose records in 10 languages across train/held-out splits. Multi-format
   coverage, translation-family auditing, and representativeness remain open.
+- Added versioned `tiktoken` exact-count labels for both supported encodings
+  on that candidate, with zero local-kernel parity mismatches. No estimator is
+  fitted or accuracy claim made.
 - Measure one-pass UTF-8 features by accuracy contribution per CPU cost.
 - Fit deterministic, dependency-free estimators independently for each
   tokenizer family.

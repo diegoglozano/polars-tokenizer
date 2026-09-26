@@ -256,3 +256,15 @@ short (25–128 bytes), and 368 medium (129–2,048 bytes); none are long. 1,032
 are ASCII-only, and the maximum observed length is 732 UTF-8 bytes.
 Broader format coverage and an audited held-out source remain prerequisites
 for publishing an estimator accuracy claim.
+
+For exploratory exact-count labels, run
+`python -m benchmarks.estimator_labels /tmp/common-voice-corpus` in the
+development environment. The helper requires `tiktoken==0.12.0`, validates
+the corpus manifest, and emits sorted `exact-labels.jsonl` plus an oracle-
+versioned `exact-labels-manifest.json`. For this candidate, the label manifest
+SHA-256 is `f9557668c7594606552ebe97a48c2b091c250a2471938f97b3cfdfc7a759ac4d`;
+total exact raw-text counts are 70,806 for `cl100k_base` and 44,877 for
+`o200k_base`. A local parity check found zero mismatches against
+`polars_tokenizer.count()` on all 3,200 selected records for each encoding.
+These labels are an independent oracle input to later estimator experiments,
+not an accuracy result.
