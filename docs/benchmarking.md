@@ -225,3 +225,34 @@ SHA-256 covers each record's text, split, source, language, content type, and
 IDs with length-prefixed fields. `source_id` records provenance but does not
 verify licensing or representativeness. The validator accepts empty text for
 zero-token tests; no dataset is bundled by this module.
+
+### Pinned external prose candidate
+
+`python -m benchmarks.common_voice_corpus /tmp/common-voice-corpus` downloads
+only Mozilla Common Voice `sentence-collector.txt` files at revision
+`3ae618d5b34381ab154bcac562ed81aacf93e42c`, verifies each file's SHA-256,
+and writes `records.jsonl` plus `manifest.json`. The ten selected languages are
+Arabic, German, English, Spanish, French, Hindi, Japanese, Russian, Swahili,
+and Simplified Chinese. Each contributes 256 train and 64 held-out sentences,
+selected by stable text hashes; identical text always receives the same split.
+The frozen candidate manifest SHA-256 is
+`6e26888b3876d5a49b3f1e5606383e0786d622c2cbaf1740d192210291ba641f`.
+The command requires network access; tests use offline synthetic fixtures.
+
+Mozilla labels the `server/data` collection [CC0 1.0](https://github.com/common-voice/common-voice/blob/3ae618d5b34381ab154bcac562ed81aacf93e42c/server/data/LICENSE),
+and its [Sentence Collector description](https://github.com/common-voice/sentence-collector#how-does-it-work)
+states that submitted sentences must be public domain. We deliberately exclude
+other source files, including Europarl and Wikipedia-derived text, because the
+repository [distinguishes their provenance](https://github.com/common-voice/common-voice/tree/3ae618d5b34381ab154bcac562ed81aacf93e42c#licensing-and-content-source).
+The checked-in script and hashes preserve provenance; generated sentence text
+is not bundled with this package.
+
+This is a licensed *candidate*, not a representative corpus: it has only short
+prose, no code, markup, JSON, long documents, empty strings, or model-specific
+exact counts. Its hash-based holdout prevents exact-text leakage, but the
+source files do not identify paraphrases or translations as related families.
+Of the 3,200 selected records, 401 are tiny (at most 24 UTF-8 bytes), 2,431
+short (25–128 bytes), and 368 medium (129–2,048 bytes); none are long. 1,032
+are ASCII-only, and the maximum observed length is 732 UTF-8 bytes.
+Broader format coverage and an audited held-out source remain prerequisites
+for publishing an estimator accuracy claim.

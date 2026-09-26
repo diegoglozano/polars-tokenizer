@@ -40,7 +40,10 @@ estimation.
   or a fitted estimator.
 - Implemented a candidate-corpus validator and order-independent SHA-256
   manifest. It rejects duplicate IDs and related or identical text crossing
-  train/held-out splits; corpus sourcing and representativeness remain open.
+  train/held-out splits.
+- Added a reproducible, checksum-pinned Common Voice CC0 sentence candidate:
+  3,200 prose records in 10 languages across train/held-out splits. Multi-format
+  coverage, translation-family auditing, and representativeness remain open.
 - Measure one-pass UTF-8 features by accuracy contribution per CPU cost.
 - Fit deterministic, dependency-free estimators independently for each
   tokenizer family.
