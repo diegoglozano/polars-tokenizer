@@ -7,7 +7,9 @@ decide whether a dataset is representative or legally distributable.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Literal, TypeAlias
 
 Split: TypeAlias = Literal["train", "held_out"]
@@ -95,3 +97,16 @@ def validate_corpus(records: list[CorpusRecord]) -> CorpusManifest:
         content_types=tuple(sorted({record.content_type for record in records})),
         source_ids=tuple(sorted({record.source_id for record in records})),
     )
+
+
+def read_corpus(directory: Path) -> list[CorpusRecord]:
+    """Load JSONL records only when the recorded manifest matches their contents."""
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+    records = [
+        CorpusRecord(**json.loads(line))
+        for line in (directory / "records.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    actual = validate_corpus(records)
+    if manifest != json.loads(json.dumps(asdict(actual))):
+        raise ValueError("corpus manifest does not match records")
+    return sorted(records, key=lambda record: record.sample_id)

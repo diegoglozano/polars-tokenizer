@@ -16,7 +16,7 @@ from pathlib import Path
 
 import tiktoken
 
-from benchmarks.estimator_corpus import CorpusRecord, validate_corpus
+from benchmarks.estimator_corpus import CorpusRecord, read_corpus, validate_corpus
 
 ORACLE_VERSION = "0.12.0"
 ENCODINGS = ("cl100k_base", "o200k_base")
@@ -31,15 +31,7 @@ class ExactLabel:
 
 def load_records(directory: Path) -> list[CorpusRecord]:
     """Read JSONL and require its recorded corpus identity to match the data."""
-    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-    records = [
-        CorpusRecord(**json.loads(line))
-        for line in (directory / "records.jsonl").read_text(encoding="utf-8").splitlines()
-    ]
-    actual = validate_corpus(records)
-    if manifest != json.loads(json.dumps(asdict(actual))):
-        raise ValueError("corpus manifest does not match records")
-    return sorted(records, key=lambda record: record.sample_id)
+    return read_corpus(directory)
 
 
 def label_records(records: list[CorpusRecord]) -> tuple[list[ExactLabel], dict]:

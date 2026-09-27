@@ -268,3 +268,29 @@ total exact raw-text counts are 70,806 for `cl100k_base` and 44,877 for
 `polars_tokenizer.count()` on all 3,200 selected records for each encoding.
 These labels are an independent oracle input to later estimator experiments,
 not an accuracy result.
+
+### Pinned structured-text candidate
+
+`python -m benchmarks.json_schema_corpus /tmp/multiformat-corpus --base-corpus /tmp/common-voice-corpus`
+downloads and SHA-256-checks the
+[JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite)
+archive at revision `5b0ee1613e45fcc2bddac00e07c19cd49b00d8a8`. The
+upstream [MIT license](https://github.com/json-schema-org/JSON-Schema-Test-Suite/blob/5b0ee1613e45fcc2bddac00e07c19cd49b00d8a8/LICENSE)
+applies; generated text is kept local and not bundled. Only the 46 top-level
+draft-2020-12 JSON test files are selected, one intact file per record and
+split family. The file-level hash split assigns 35 to train and 11 to held out.
+The command verifies the base corpus manifest and rejects combined identity
+or exact-text leakage.
+
+The combined candidate has 3,246 records (2,595 train, 651 held out), ten
+languages, and two content types, with corpus SHA-256
+`74c52ca913659968486f5aeb8233ac37e0f8a27767da1f8802b2492b15150c96`.
+Its 46 JSON files are all 637–50,423 UTF-8 bytes: 11 medium and 35 long by
+the benchmark buckets. Running `benchmarks.estimator_labels` on the combined
+corpus yields label SHA-256
+`db8692d9d1392399beb75285f07f0fd1f14be8638d272297428ee88bcf50fa56`
+with 147,521 `cl100k_base` and 121,608 `o200k_base` tokens. The labels
+have zero mismatches against the local count kernel across all 3,246 records.
+The JSON records are conformance fixtures, not typical application JSON;
+JSON is English-only and
+just 1.4% of records. More diverse structured text and code are still needed.

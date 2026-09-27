@@ -47,6 +47,10 @@ estimation.
 - Added versioned `tiktoken` exact-count labels for both supported encodings
   on that candidate, with zero local-kernel parity mismatches. No estimator is
   fitted or accuracy claim made.
+- Added a pinned MIT-licensed JSON Schema fixture candidate: 46 intact files,
+  including 35 long records, that can be combined with the prose candidate.
+  These conformance fixtures are not representative application JSON; code,
+  broader structured text, and coverage balancing remain open.
 - Measure one-pass UTF-8 features by accuracy contribution per CPU cost.
 - Fit deterministic, dependency-free estimators independently for each
   tokenizer family.
