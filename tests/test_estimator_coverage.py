@@ -31,6 +31,8 @@ def test_summarizes_each_content_split():
     assert prose["held_out"]["min_utf8_bytes"] == 0
     assert prose["held_out"]["tokens"]["o200k_base"]["zero_count_records"] == 1
     assert result["by_content_type"]["python_code"]["held_out"]["languages"] == ["und"]
+    assert result["by_content_type"]["python_code"]["train"]["records"] == 0
+    assert result["by_content_type"]["python_code"]["train"]["tokens"]["o200k_base"]["p95"] is None
     assert result == summarize_coverage(list(reversed(records)), list(reversed(labels)))
 
 

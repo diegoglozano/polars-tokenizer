@@ -23,6 +23,20 @@ def _nearest_rank(values: list[int], percentile: float) -> int:
 
 
 def _group_summary(rows: list[tuple[CorpusRecord, ExactLabel]]) -> dict:
+    if not rows:
+        return {
+            "records": 0,
+            "languages": [],
+            "ascii_only_records": 0,
+            "utf8_length_classes": {name: 0 for name in ("tiny", "short", "medium", "long")},
+            "min_utf8_bytes": None,
+            "median_utf8_bytes": None,
+            "max_utf8_bytes": None,
+            "tokens": {
+                name: {"zero_count_records": 0, "median": None, "p95": None, "max": None}
+                for name in ENCODINGS
+            },
+        }
     lengths = [len(record.text.encode("utf-8")) for record, _ in rows]
     buckets = {name: 0 for name in ("tiny", "short", "medium", "long")}
     for record, _ in rows:
@@ -72,7 +86,7 @@ def summarize_coverage(records: list[CorpusRecord], labels: list[ExactLabel]) ->
         "records": manifest.records,
         "by_content_type": {
             content_type: {
-                split: _group_summary(group) for split, group in sorted(split_groups.items())
+                split: _group_summary(split_groups[split]) for split in ("train", "held_out")
             }
             for content_type, split_groups in sorted(groups.items())
         },
