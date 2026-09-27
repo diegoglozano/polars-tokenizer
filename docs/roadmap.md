@@ -57,6 +57,10 @@ estimation.
 - Added a split-by-format coverage audit tied to corpus and oracle hashes.
   Sparse long-form and non-prose strata are explicit; sampling balance and
   external validity remain gates before estimator accuracy publication.
+- Added a benchmark-only, train-fitted nonnegative ASCII/non-ASCII byte model
+  compared against bytes/4 on held-out rows. It improves aggregate candidate
+  MAE but has large JSON and code errors; production estimator work still
+  requires CPU-cost measurements and broader external validation.
 - Measure one-pass UTF-8 features by accuracy contribution per CPU cost.
 - Fit deterministic, dependency-free estimators independently for each
   tokenizer family.
