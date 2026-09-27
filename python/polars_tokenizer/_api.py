@@ -83,6 +83,7 @@ def estimate_cost(
     category: BillingCategory = "input",
     usd_per_million_tokens: UsdPerMillionOverride | None = None,
     snapshot_date: str | None = None,
+    cache_capacity: int | None = None,
 ) -> pl.Expr:
     """Estimate raw-text cost in USD using exact counts and pinned pricing.
 
@@ -90,11 +91,15 @@ def estimate_cost(
     request-level accounting. Null input produces null output. A caller may
     replace the registry rate with an explicit USD-per-million-token value or
     select an exact bundled snapshot date.
+
+    ``cache_capacity`` applies the same opt-in string cache as :func:`count`.
     """
     price_per_token = resolve_price_per_token(
         model, category, usd_per_million_tokens, snapshot_date=snapshot_date
     )
-    return count(expr, model=model).cast(pl.Float64) * float(price_per_token)
+    return count(expr, model=model, cache_capacity=cache_capacity).cast(pl.Float64) * float(
+        price_per_token
+    )
 
 
 def estimate_cost_details(
@@ -104,12 +109,15 @@ def estimate_cost_details(
     category: BillingCategory = "input",
     usd_per_million_tokens: UsdPerMillionOverride | None = None,
     snapshot_date: str | None = None,
+    cache_capacity: int | None = None,
 ) -> pl.Expr:
     """Return a struct with raw-text token count, cost, and price provenance.
 
     The `cost_usd` field is null for null input; metadata fields remain present.
     Caller-supplied rates have no pinned snapshot or known serving provider.
     `snapshot_date` selects one exact bundled price snapshot.
+
+    ``cache_capacity`` applies the same opt-in string cache as :func:`count`.
     """
     price_per_token = resolve_price_per_token(
         model, category, usd_per_million_tokens, snapshot_date=snapshot_date
@@ -130,7 +138,7 @@ def estimate_cost_details(
         source_url = None
         price_source = "caller_override"
 
-    token_counts = count(expr, model=model)
+    token_counts = count(expr, model=model, cache_capacity=cache_capacity)
     return pl.struct(
         token_count=token_counts,
         cost_usd=token_counts.cast(pl.Float64) * float(price_per_token),
@@ -178,6 +186,7 @@ class TokenExprNameSpace:
         category: BillingCategory = "input",
         usd_per_million_tokens: UsdPerMillionOverride | None = None,
         snapshot_date: str | None = None,
+        cache_capacity: int | None = None,
     ) -> pl.Expr:
         """Estimate raw-text cost in USD from exact local token counts."""
         return estimate_cost(
@@ -186,6 +195,7 @@ class TokenExprNameSpace:
             category=category,
             usd_per_million_tokens=usd_per_million_tokens,
             snapshot_date=snapshot_date,
+            cache_capacity=cache_capacity,
         )
 
     def estimate_cost_details(
@@ -195,6 +205,7 @@ class TokenExprNameSpace:
         category: BillingCategory = "input",
         usd_per_million_tokens: UsdPerMillionOverride | None = None,
         snapshot_date: str | None = None,
+        cache_capacity: int | None = None,
     ) -> pl.Expr:
         """Return a struct with token count, cost, and price provenance."""
         return estimate_cost_details(
@@ -203,4 +214,5 @@ class TokenExprNameSpace:
             category=category,
             usd_per_million_tokens=usd_per_million_tokens,
             snapshot_date=snapshot_date,
+            cache_capacity=cache_capacity,
         )

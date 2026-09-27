@@ -96,6 +96,8 @@ The cache stores borrowed strings and exact counts, with FIFO eviction and a
 limit of 1–65,536 entries per worker task. It does not change results or apply
 to categorical/enum columns, which already deduplicate values. Leave it off
 for mostly unique strings: hashing and eviction can reduce throughput.
+The same `cache_capacity` option is available on `estimate_cost()` and
+`estimate_cost_details()`, including their `Expr.tokens` forms.
 
 ## Why this implementation
 
