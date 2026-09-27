@@ -251,7 +251,9 @@ The 1% null smoke case also preserved output parity. Process peak RSS varied
 by less than about 0.3 MiB between modes within these cases, comparable to
 run-to-run noise; this does not establish the cache's memory cost. The
 experiment still excludes Python expression dispatch and parallel chunking.
-There is no automatic or public cache setting yet.
+The public API now has an opt-in `cache_capacity` setting for string columns;
+there is still no automatic cache policy. These isolated results motivate the
+setting but do not predict every end-to-end workload.
 
 ### Native component cross-check
 

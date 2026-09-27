@@ -21,6 +21,7 @@ IntoExpr: TypeAlias = str | pl.Expr | pl.Series
 
 _PLUGIN_PATH = Path(__file__).parent
 _SUPPORTED = frozenset({"cl100k_base", "o200k_base"})
+_MAX_CACHE_CAPACITY = 65_536
 
 
 def _validate_tokenizer(tokenizer: str) -> None:
@@ -46,18 +47,31 @@ def count(
     tokenizer: Tokenizer | None = None,
     *,
     model: Model | None = None,
+    cache_capacity: int | None = None,
 ) -> pl.Expr:
     """Return the exact raw-text token count as a UInt32 expression.
 
     Null input produces null output. Special-token-looking substrings are
     treated as ordinary text; no Unicode normalization is applied.
+
+    For repeated ordinary string values, ``cache_capacity`` enables a bounded
+    FIFO cache of exact counts. It is opt-in because hashing mostly unique
+    values can be slower. Categorical and enum columns already count each
+    category once, so this setting has no effect on them.
     """
     resolved = _resolve_tokenizer(tokenizer, model)
+    if cache_capacity is not None and (
+        isinstance(cache_capacity, bool)
+        or not isinstance(cache_capacity, int)
+        or not 1 <= cache_capacity <= _MAX_CACHE_CAPACITY
+    ):
+        msg = f"cache_capacity must be an integer between 1 and {_MAX_CACHE_CAPACITY}"
+        raise ValueError(msg)
     return register_plugin_function(
         plugin_path=_PLUGIN_PATH,
         args=[expr],
         function_name="token_count",
-        kwargs={"tokenizer": resolved},
+        kwargs={"tokenizer": resolved, "cache_capacity": cache_capacity},
         is_elementwise=True,
     )
 
@@ -147,9 +161,15 @@ class TokenExprNameSpace:
         tokenizer: Tokenizer | None = None,
         *,
         model: Model | None = None,
+        cache_capacity: int | None = None,
     ) -> pl.Expr:
         """Return exact token counts for this string expression."""
-        return count(self._expr, tokenizer=tokenizer, model=model)
+        return count(
+            self._expr,
+            tokenizer=tokenizer,
+            model=model,
+            cache_capacity=cache_capacity,
+        )
 
     def estimate_cost(
         self,
