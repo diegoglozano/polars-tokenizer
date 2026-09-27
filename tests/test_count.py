@@ -149,12 +149,33 @@ def test_categorical_counts_dictionary_values_once_semantically() -> None:
     assert result.schema["text"] == pl.UInt32
 
 
+@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+def test_non_null_categorical_multichunk_slice(tokenizer: Tokenizer) -> None:
+    with pl.StringCache():
+        first = pl.Series("text", ["hello world", "你好", "hello world"]).cast(pl.Categorical)
+        second = pl.Series("text", ["", "👋🏽", "你好"]).cast(pl.Categorical)
+        values = first.append(second).slice(1, 4)
+    assert values.n_chunks() > 1
+    assert values.null_count() == 0
+    expected = [reference_count(value, tokenizer) for value in values]
+    actual = pl.DataFrame(values).select(tokens.count("text", tokenizer=tokenizer)).to_series()
+    assert actual.to_list() == expected
+
+
 def test_enum_with_unused_categories() -> None:
     values = ["alpha", None, "beta", "alpha"]
     dtype = pl.Enum(["unused", "alpha", "beta", "also unused"])
     frame = pl.DataFrame({"text": pl.Series(values, dtype=dtype)})
     expected = [reference_count(value) if value is not None else None for value in values]
 
+    assert frame.select(tokens.count("text")).to_series().to_list() == expected
+
+
+def test_non_null_enum_with_unused_categories() -> None:
+    values = ["beta", "alpha", "beta", "alpha"]
+    dtype = pl.Enum(["unused", "alpha", "beta", "also unused"])
+    frame = pl.DataFrame({"text": pl.Series(values, dtype=dtype)})
+    expected = [reference_count(value) for value in values]
     assert frame.select(tokens.count("text")).to_series().to_list() == expected
 
 
@@ -241,6 +262,17 @@ def test_wide_categorical_ids_match_reference() -> None:
     frame = pl.DataFrame({"text": values}).with_columns(pl.col("text").cast(pl.Categorical))
     expected = [reference_count(value) for value in values]
     assert frame.select(tokens.count("text")).to_series().to_list() == expected
+
+
+@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+def test_many_short_categorical_values_match_reference(tokenizer: Tokenizer) -> None:
+    categories = [f"key-{index:04}" for index in range(5_000)]
+    values = [*categories, None, *categories[::17]]
+    frame = pl.DataFrame({"text": values}).with_columns(pl.col("text").cast(pl.Categorical))
+    expected = [
+        reference_count(value, tokenizer) if value is not None else None for value in values
+    ]
+    assert frame.select(tokens.count("text", tokenizer=tokenizer)).to_series().to_list() == expected
 
 
 def test_sparse_enum_mapping_uses_only_present_values() -> None:
