@@ -333,3 +333,20 @@ three-format candidate, held-out prose has 640 records but no long rows;
 held-out JSON has 11 files (8 long), and held-out Python has 25 files (18
 long). These uneven strata are visible for evaluation planning, not evidence
 that the candidate represents production workloads.
+
+### Raw-text byte baseline (exploratory)
+
+`python -m benchmarks.estimator_baseline /tmp/three-format-corpus` fits two
+nonnegative coefficients—tokens per ASCII and non-ASCII UTF-8 byte—from train
+rows only, independently for `cl100k_base` and `o200k_base`. It compares that
+model with fixed `UTF-8 bytes / 4` on held-out rows using the stratified
+error summarizer. Neither prediction path reads language, content-type, source,
+or held-out labels; those fields are used only for evaluation.
+
+On this candidate, held-out MAE fell from 34.37 to 14.48 tokens for
+`cl100k_base`, and from 31.56 to 14.18 for `o200k_base`. That aggregate hides
+large format differences: fitted `o200k_base` MAE is 3.86 on prose, 70.39 on
+JSON, and 253.72 on Python code. The dataset has only 11 held-out JSON files
+and 25 held-out Python files, so these numbers are diagnostic, not an
+accuracy claim or a basis for enabling a production estimator. Feature CPU
+cost, broader sources, and external validity remain unmeasured.
