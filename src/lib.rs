@@ -526,13 +526,19 @@ fn token_count(
             }
         }
         DataType::Categorical(_, _) | DataType::Enum(_, _) => {
-            with_match_categorical_physical_type!(input.dtype().cat_physical()?, |$C| {
-                count_categorical(
-                    input.cat::<$C>()?,
-                    encoding,
-                    !context.parallel() && THREAD_POOL.current_num_threads() > 1,
-                )
-            })?
+            if input.null_count() == input.len() {
+                // No category IDs are used, so neither the mapping nor a
+                // count lookup needs to be allocated or traversed.
+                UInt32Chunked::full_null(input.name().clone(), input.len())
+            } else {
+                with_match_categorical_physical_type!(input.dtype().cat_physical()?, |$C| {
+                    count_categorical(
+                        input.cat::<$C>()?,
+                        encoding,
+                        !context.parallel() && THREAD_POOL.current_num_threads() > 1,
+                    )
+                })?
+            }
         }
         dtype => {
             return Err(PolarsError::ComputeError(

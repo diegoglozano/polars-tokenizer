@@ -271,6 +271,32 @@ def test_enum_with_unused_categories() -> None:
     assert frame.select(tokens.count("text")).to_series().to_list() == expected
 
 
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
+@pytest.mark.parametrize("cache_capacity", [None, 2])
+@pytest.mark.parametrize("length", [0, 64])
+def test_all_null_categorical_and_enum(
+    tokenizer: Tokenizer, cache_capacity: int | None, length: int
+) -> None:
+    for dtype in (pl.Categorical, pl.Enum(["unused", "another", "value"])):
+        frame = pl.DataFrame({"text": pl.Series([None] * length, dtype=dtype)})
+        actual = (
+            frame.lazy()
+            .select(tokens.count("text", tokenizer, cache_capacity=cache_capacity))
+            .collect(engine="streaming")
+            .to_series()
+        )
+        assert actual.dtype == pl.UInt32
+        assert actual.to_list() == [None] * length
+
+
+def test_all_null_categorical_with_shared_mapping() -> None:
+    with pl.StringCache():
+        pl.Series([f"category-{index}" for index in range(5_000)]).cast(pl.Categorical)
+        values = pl.Series("text", [None] * 64, dtype=pl.Categorical)
+    frame = pl.DataFrame(values)
+    assert frame.select(tokens.count("text")).to_series().to_list() == [None] * 64
+
+
 def test_non_null_enum_with_unused_categories() -> None:
     values = ["beta", "alpha", "beta", "alpha"]
     dtype = pl.Enum(["unused", "alpha", "beta", "also unused"])
