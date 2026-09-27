@@ -51,6 +51,9 @@ estimation.
   including 35 long records, that can be combined with the prose candidate.
   These conformance fixtures are not representative application JSON; code,
   broader structured text, and coverage balancing remain open.
+- Added 49 pinned Python source files, with Flask in train and Black held out
+  to avoid same-project leakage. The three-format candidate is still highly
+  prose-weighted and not representative of other programming languages.
 - Measure one-pass UTF-8 features by accuracy contribution per CPU cost.
 - Fit deterministic, dependency-free estimators independently for each
   tokenizer family.
