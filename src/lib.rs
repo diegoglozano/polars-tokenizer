@@ -23,7 +23,9 @@ static ALLOCATOR: PolarsAllocator = PolarsAllocator::new();
 
 const O200K_BASE: &str = "o200k_base";
 const CL100K_BASE: &str = "cl100k_base";
-const SUPPORTED_TOKENIZERS: &str = "cl100k_base, o200k_base";
+const P50K_BASE: &str = "p50k_base";
+const R50K_BASE: &str = "r50k_base";
+const SUPPORTED_TOKENIZERS: &str = "cl100k_base, o200k_base, p50k_base, r50k_base";
 const PARALLEL_MIN_BYTES: usize = 512 * 1024;
 const TASKS_PER_THREAD: usize = 4;
 const CATEGORICAL_PARALLEL_MIN_CATEGORIES: usize = 4_096;
@@ -71,13 +73,46 @@ pub fn count_cl100k(text: &str) -> usize {
         .count(text)
 }
 
+/// Count `p50k_base` tokens without materializing token IDs.
+///
+/// Special-token-looking byte sequences are treated as ordinary text.
+///
+/// # Panics
+///
+/// Panics only when the binary was built without the required
+/// `vocab-p50k_base` Cargo feature, which is an internal build invariant.
+#[inline]
+#[must_use]
+pub fn count_p50k(text: &str) -> usize {
+    tiktoken::get_encoding(P50K_BASE)
+        .expect("p50k_base vocabulary must be compiled in")
+        .count(text)
+}
+
+/// Count `r50k_base` tokens without materializing token IDs.
+///
+/// Special-token-looking byte sequences are treated as ordinary text.
+///
+/// # Panics
+///
+/// Panics only when the binary was built without the required
+/// `vocab-r50k_base` Cargo feature, which is an internal build invariant.
+#[inline]
+#[must_use]
+pub fn count_r50k(text: &str) -> usize {
+    tiktoken::get_encoding(R50K_BASE)
+        .expect("r50k_base vocabulary must be compiled in")
+        .count(text)
+}
+
 fn resolve_encoding(tokenizer: &str) -> PolarsResult<&'static CoreBpe> {
     match tokenizer {
-        CL100K_BASE | O200K_BASE => tiktoken::get_encoding(tokenizer).ok_or_else(|| {
-            PolarsError::ComputeError(
-                format!("tokenizer {tokenizer:?} was not compiled into this build").into(),
-            )
-        }),
+        CL100K_BASE | O200K_BASE | P50K_BASE | R50K_BASE => tiktoken::get_encoding(tokenizer)
+            .ok_or_else(|| {
+                PolarsError::ComputeError(
+                    format!("tokenizer {tokenizer:?} was not compiled into this build").into(),
+                )
+            }),
         _ => Err(PolarsError::ComputeError(
             format!(
                 "unsupported tokenizer {tokenizer:?}; supported tokenizers: {SUPPORTED_TOKENIZERS}"
@@ -529,6 +564,27 @@ mod tests {
 
         for (text, expected) in cases {
             assert_eq!(count_cl100k(text), expected, "input: {text:?}");
+        }
+    }
+
+    #[test]
+    fn legacy_encodings_match_encode_length() {
+        let cases = ["", "hello world", "    code", "你好，世界", "<|endoftext|>"];
+        for name in [P50K_BASE, R50K_BASE] {
+            let encoding = resolve_encoding(name).unwrap();
+            for text in cases {
+                assert_eq!(
+                    encoding.count(text),
+                    encoding.encode(text).len(),
+                    "{name}: {text:?}"
+                );
+                let public_count = match name {
+                    P50K_BASE => count_p50k(text),
+                    R50K_BASE => count_r50k(text),
+                    _ => unreachable!(),
+                };
+                assert_eq!(public_count, encoding.count(text), "{name}: {text:?}");
+            }
         }
     }
 

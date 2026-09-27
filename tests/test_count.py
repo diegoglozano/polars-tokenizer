@@ -8,10 +8,16 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from polars_tokenizer import Tokenizer
 
-ENCODINGS = {name: tiktoken.get_encoding(name) for name in ("cl100k_base", "o200k_base")}
+TOKENIZERS: tuple[Tokenizer, ...] = (
+    "cl100k_base",
+    "o200k_base",
+    "p50k_base",
+    "r50k_base",
+)
+ENCODINGS = {name: tiktoken.get_encoding(name) for name in TOKENIZERS}
 
 
-def reference_count(text: str, tokenizer: str = "o200k_base") -> int:
+def reference_count(text: str, tokenizer: Tokenizer = "o200k_base") -> int:
     return len(ENCODINGS[tokenizer].encode(text, disallowed_special=()))
 
 
@@ -57,12 +63,22 @@ def test_exact_reference_cases(text: str) -> None:
         'fn main() { println!("hello"); }',
     ],
 )
-def test_cl100k_exact_reference_cases(text: str) -> None:
+@pytest.mark.parametrize("tokenizer", ["cl100k_base", "p50k_base", "r50k_base"])
+def test_other_encodings_exact_reference_cases(text: str, tokenizer: Tokenizer) -> None:
     result = pl.DataFrame({"text": [text]}).select(
-        pl.col("text").tokens.count("cl100k_base")  # ty: ignore[unresolved-attribute]
+        pl.col("text").tokens.count(tokenizer)  # ty: ignore[unresolved-attribute]
     )
-    assert result.item() == reference_count(text, "cl100k_base")
+    assert result.item() == reference_count(text, tokenizer)
     assert result.schema["text"] == pl.UInt32
+
+
+def test_legacy_code_indentation_uses_distinct_vocabularies() -> None:
+    text = "def f():\n" + " " * 24 + "return 1"
+    frame = pl.DataFrame({"text": [text]})
+    p50k = frame.select(tokens.count("text", "p50k_base")).item()
+    r50k = frame.select(tokens.count("text", "r50k_base")).item()
+    assert p50k == reference_count(text, "p50k_base") == 7
+    assert r50k == reference_count(text, "r50k_base") == 29
 
 
 def test_null_and_empty() -> None:
@@ -72,7 +88,7 @@ def test_null_and_empty() -> None:
     assert result["count"].to_list() == [2, None, 0]
 
 
-@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
 def test_non_null_multichunk_slice(tokenizer: Tokenizer) -> None:
     first = pl.Series("text", ["", "hello world", "你好，世界"])
     second = pl.Series("text", ["👋🏽", "line one\nline two", "<|endoftext|>"])
@@ -91,7 +107,7 @@ def test_chunked_input() -> None:
     assert frame.select(tokens.count("text")).to_series().to_list() == expected
 
 
-@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
 @pytest.mark.parametrize("capacity", [1, 2, 16])
 def test_bounded_cache_matches_reference_with_nulls_and_evictions(
     tokenizer: Tokenizer, capacity: int
@@ -108,7 +124,7 @@ def test_bounded_cache_matches_reference_with_nulls_and_evictions(
     assert result.to_series().to_list() == expected
 
 
-@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
 def test_bounded_cache_parallel_matches_uncached(tokenizer: Tokenizer) -> None:
     unique = [f"value {index:04}: " + "hello world 👋🏽 " * 8 for index in range(64)]
     values = [None if index % 101 == 0 else unique[index % len(unique)] for index in range(8_000)]
@@ -207,7 +223,7 @@ def test_categorical_counts_dictionary_values_once_semantically() -> None:
     assert result.schema["text"] == pl.UInt32
 
 
-@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
 def test_non_null_categorical_multichunk_slice(tokenizer: Tokenizer) -> None:
     with pl.StringCache():
         first = pl.Series("text", ["hello world", "你好", "hello world"]).cast(pl.Categorical)
@@ -322,7 +338,7 @@ def test_wide_categorical_ids_match_reference() -> None:
     assert frame.select(tokens.count("text")).to_series().to_list() == expected
 
 
-@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
 def test_many_short_categorical_values_match_reference(tokenizer: Tokenizer) -> None:
     categories = [f"key-{index:04}" for index in range(5_000)]
     values = [*categories, None, *categories[::17]]
@@ -345,7 +361,7 @@ def test_unsupported_tokenizer_fails_early() -> None:
     with pytest.raises(ValueError, match="unsupported tokenizer"):
         tokens.count(
             "text",
-            tokenizer="p50k_base",  # ty: ignore[invalid-argument-type]
+            tokenizer="o200k_harmony",  # ty: ignore[invalid-argument-type]
         )
 
 
@@ -370,3 +386,11 @@ def test_cl100k_arbitrary_unicode_matches_reference(text: str) -> None:
         pl.DataFrame({"text": [text]}).select(tokens.count("text", tokenizer="cl100k_base")).item()
     )
     assert actual == reference_count(text, "cl100k_base")
+
+
+@pytest.mark.parametrize("tokenizer", ["p50k_base", "r50k_base"])
+@settings(max_examples=125, deadline=None)
+@given(text=st.text(max_size=2_048))
+def test_legacy_arbitrary_unicode_matches_reference(text: str, tokenizer: Tokenizer) -> None:
+    actual = pl.DataFrame({"text": [text]}).select(tokens.count("text", tokenizer)).item()
+    assert actual == reference_count(text, tokenizer)
