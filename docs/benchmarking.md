@@ -294,3 +294,28 @@ have zero mismatches against the local count kernel across all 3,246 records.
 The JSON records are conformance fixtures, not typical application JSON;
 JSON is English-only and
 just 1.4% of records. More diverse structured text and code are still needed.
+
+### Pinned Python-code candidate
+
+`python -m benchmarks.python_code_corpus /tmp/three-format-corpus --base-corpus /tmp/multiformat-corpus`
+adds whole Python source files from [Flask](https://github.com/pallets/flask/tree/d73fa1cdcbd8b1465c151db8924ba58b1dd14e35/src/flask)
+and [Black](https://github.com/psf/black/tree/8d5a2d9f49378d7abe2eb632df1601818de8c24e/src/black).
+Both have permissive licenses: Flask uses
+[BSD-3-Clause](https://github.com/pallets/flask/blob/d73fa1cdcbd8b1465c151db8924ba58b1dd14e35/LICENSE.txt)
+and Black uses [MIT](https://github.com/psf/black/blob/8d5a2d9f49378d7abe2eb632df1601818de8c24e/LICENSE).
+The script pins both archive SHA-256 digests, does not bundle their text, and
+preserves a source path and revision for every record. Any redistribution of
+generated source files must retain the upstream license notices.
+
+All 24 Flask library files are train records, and all 25 Black library files
+are held out. This source-level split is stronger than splitting related
+files within either project. One selected file is empty; 40 of the 49 are
+longer than 2,048 UTF-8 bytes. The combined corpus has 3,295 records
+(2,619 train, 676 held out), three content types, and SHA-256
+`b7b08bb6a588bff6de4ffc5beb42445bb59183f6c19b41758c9759310cc61742`.
+Its exact-label SHA-256 is
+`4aafc493fc421c08385e8429340a2d499ea60f85acb803e0048ea3966f0270fe`;
+totals are 344,489 `cl100k_base` and 319,511 `o200k_base` tokens, with zero
+local-kernel parity mismatches. Code is labeled `language="und"` because the
+natural-language field is not a programming-language identifier. This remains
+exploratory: it covers only two Python projects, and code is 1.5% of records.
