@@ -125,6 +125,17 @@ path on this workload and within 14% of its preferred whole-buffer API. The
 comparison is necessarily asymmetric: the plugin returns only `UInt32` counts,
 while GigaToken 0.10.0 has no count-only operation and materializes token IDs.
 
+### No-null string fast path
+
+The string count loop now uses Polars' unboxed no-null iterator when its input
+range has no nulls, retaining the nullable iterator otherwise. On this shared host,
+a release-build, single-thread matrix case with 200,000 unique 24-byte rows
+fell from 38.63 ms before to 31.57–31.92 ms after (about 17–18% less time).
+The 100,000-row 128-byte case was effectively flat: 69.83 ms before versus
+70.86–73.13 ms after across two runs. These are directional, not controlled
+release claims. Both tokenizers matched the Python reference on no-null and
+1%-null cases at one and four threads.
+
 ## Thread scaling
 
 | Polars threads | Median MiB/s | Speedup | Parallel efficiency |

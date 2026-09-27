@@ -94,8 +94,17 @@ fn count_chunk(strings: &StringChunked, encoding: &CoreBpe) -> PolarsResult<UInt
     let mut output =
         PrimitiveChunkedBuilder::<UInt32Type>::new(strings.name().clone(), strings.len());
 
-    // Iteration borrows values from Polars' StringView buffers. The only
-    // per-chunk allocation here is the final values/validity output.
+    // Most string columns have no nulls. This iterator borrows StringView
+    // values without boxing or producing an Option for every row.
+    if strings.null_count() == 0 {
+        for text in strings.into_no_null_iter() {
+            output.append_value(checked_count(text, encoding)?);
+        }
+        return Ok(output.finish());
+    }
+
+    // Nullable iteration also borrows from StringView buffers; only the
+    // output values and validity are allocated for this chunk.
     for value in strings {
         match value {
             None => output.append_null(),

@@ -6,6 +6,7 @@ import pytest
 import tiktoken
 from hypothesis import given, settings
 from hypothesis import strategies as st
+from polars_tokenizer import Tokenizer
 
 ENCODINGS = {name: tiktoken.get_encoding(name) for name in ("cl100k_base", "o200k_base")}
 
@@ -69,6 +70,17 @@ def test_null_and_empty() -> None:
         tokens.count("text").alias("count")
     )
     assert result["count"].to_list() == [2, None, 0]
+
+
+@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+def test_non_null_multichunk_slice(tokenizer: Tokenizer) -> None:
+    first = pl.Series("text", ["", "hello world", "你好，世界"])
+    second = pl.Series("text", ["👋🏽", "line one\nline two", "<|endoftext|>"])
+    values = first.append(second).slice(1, 4)
+    assert values.null_count() == 0
+    expected = [reference_count(value, tokenizer) for value in values]
+    actual = pl.DataFrame(values).select(tokens.count("text", tokenizer=tokenizer)).to_series()
+    assert actual.to_list() == expected
 
 
 def test_chunked_input() -> None:
