@@ -91,6 +91,64 @@ def test_chunked_input() -> None:
     assert frame.select(tokens.count("text")).to_series().to_list() == expected
 
 
+@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+@pytest.mark.parametrize("capacity", [1, 2, 16])
+def test_bounded_cache_matches_reference_with_nulls_and_evictions(
+    tokenizer: Tokenizer, capacity: int
+) -> None:
+    values = ["hello world", "你好，世界", None, "hello world", "", "👋🏽🌍"] * 8
+    first = pl.Series("text", values[:17])
+    second = pl.Series("text", values[17:])
+    frame = pl.DataFrame(first.append(second))
+    expected = [
+        reference_count(value, tokenizer) if value is not None else None for value in values
+    ]
+
+    result = frame.select(tokens.count("text", tokenizer, cache_capacity=capacity))
+    assert result.to_series().to_list() == expected
+
+
+@pytest.mark.parametrize("tokenizer", ["o200k_base", "cl100k_base"])
+def test_bounded_cache_parallel_matches_uncached(tokenizer: Tokenizer) -> None:
+    unique = [f"value {index:04}: " + "hello world 👋🏽 " * 8 for index in range(64)]
+    values = [None if index % 101 == 0 else unique[index % len(unique)] for index in range(8_000)]
+    frame = pl.DataFrame({"text": values})
+    assert frame["text"].str.len_bytes().sum() > 512 * 1024
+
+    uncached = frame.select(tokens.count("text", tokenizer)).to_series().to_list()
+    cached = frame.select(tokens.count("text", tokenizer, cache_capacity=256)).to_series()
+    assert cached.to_list() == uncached
+
+
+@pytest.mark.parametrize("capacity", [0, -1, 65_537, True, 2.5, "256"])
+def test_invalid_cache_capacity_fails_early(capacity: object) -> None:
+    with pytest.raises(ValueError, match="cache_capacity must be an integer"):
+        tokens.count("text", cache_capacity=capacity)  # ty: ignore[invalid-argument-type]
+
+
+def test_bounded_cache_has_no_effect_on_categorical_or_enum() -> None:
+    values = ["hello world", None, "你好，世界", "hello world"]
+    for dtype in (pl.Categorical, pl.Enum(["unused", "hello world", "你好，世界"])):
+        frame = pl.DataFrame({"text": pl.Series(values, dtype=dtype)})
+        actual = frame.select(tokens.count("text", cache_capacity=1)).to_series().to_list()
+        expected = [reference_count(value) if value is not None else None for value in values]
+        assert actual == expected
+
+
+def test_bounded_cache_expr_namespace_streaming() -> None:
+    values = ["hello world", "hello world", None, "你好，世界"]
+    frame = pl.DataFrame({"text": values})
+    actual = (
+        frame.lazy()
+        .select(pl.col("text").tokens.count(cache_capacity=2))  # ty: ignore[unresolved-attribute]
+        .collect(engine="streaming")
+        .to_series()
+        .to_list()
+    )
+    expected = [reference_count(value) if value is not None else None for value in values]
+    assert actual == expected
+
+
 def test_lazy_streaming() -> None:
     frame = pl.DataFrame({"text": ["one", "two words", None, ""]})
     result = frame.lazy().select(tokens.count("text")).collect(engine="streaming")

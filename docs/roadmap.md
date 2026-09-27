@@ -24,9 +24,10 @@ estimation.
   symbol-resolving profiler or explicit tokenizer instrumentation.
 - Implemented: categorical/enum inputs count each used dictionary value once
   with dense, sparse, and parallel physical-ID paths.
-- An experimental bounded whole-value cache benchmark now covers 0.01%,
-  0.1%, 1%, 10%, 50%, and 100% cardinality. Repeat it on a controlled host
-  with end-to-end memory measurements before choosing an automatic policy.
+- Opt-in bounded whole-value caching is available for repeated string values.
+  Experimental benchmarks cover 0.01%, 0.1%, 1%, 10%, 50%, and 100%
+  cardinality. Repeat them on a controlled host with end-to-end memory
+  measurements before choosing an automatic policy.
 - The benchmark matrix now supports deterministic exceptionally large rows.
   A dominant-row guard skips parallel dispatch when less than 512 KiB of
   independent text remains; continue profiling huge rows without nested

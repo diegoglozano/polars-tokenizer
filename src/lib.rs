@@ -7,7 +7,7 @@
 #[doc(hidden)]
 pub mod sentencepiece_bpe;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use polars::prelude::*;
 use pyo3_polars::PolarsAllocator;
@@ -28,10 +28,13 @@ const PARALLEL_MIN_BYTES: usize = 512 * 1024;
 const TASKS_PER_THREAD: usize = 4;
 const CATEGORICAL_PARALLEL_MIN_CATEGORIES: usize = 4_096;
 const CATEGORICAL_DENSE_RATIO: usize = 4;
+const MAX_CACHE_CAPACITY: usize = 65_536;
 
 #[derive(Deserialize)]
 struct CountKwargs {
     tokenizer: String,
+    #[serde(default)]
+    cache_capacity: Option<usize>,
 }
 
 /// Count `o200k_base` tokens without materializing token IDs.
@@ -115,6 +118,82 @@ fn count_chunk(strings: &StringChunked, encoding: &CoreBpe) -> PolarsResult<UInt
     }
 
     Ok(output.finish())
+}
+
+#[inline]
+fn cached_count<'a>(
+    text: &'a str,
+    encoding: &CoreBpe,
+    capacity: usize,
+    counts: &mut HashMap<&'a str, u32>,
+    order: &mut VecDeque<&'a str>,
+) -> PolarsResult<u32> {
+    if let Some(&count) = counts.get(text) {
+        return Ok(count);
+    }
+
+    let count = checked_count(text, encoding)?;
+    if counts.len() == capacity {
+        if let Some(oldest) = order.pop_front() {
+            counts.remove(oldest);
+        }
+    }
+    counts.insert(text, count);
+    order.push_back(text);
+    Ok(count)
+}
+
+fn count_chunk_cached(
+    strings: &StringChunked,
+    encoding: &CoreBpe,
+    capacity: usize,
+) -> PolarsResult<UInt32Chunked> {
+    debug_assert!(capacity > 0);
+    let mut output =
+        PrimitiveChunkedBuilder::<UInt32Type>::new(strings.name().clone(), strings.len());
+    // Borrow keys from the input buffers; the cache never copies string data.
+    // FIFO eviction bounds both tables to `capacity` entries per task.
+    let mut counts: HashMap<&str, u32> = HashMap::new();
+    let mut order: VecDeque<&str> = VecDeque::new();
+
+    if strings.null_count() == 0 {
+        for text in strings.into_no_null_iter() {
+            output.append_value(cached_count(
+                text,
+                encoding,
+                capacity,
+                &mut counts,
+                &mut order,
+            )?);
+        }
+        return Ok(output.finish());
+    }
+
+    for value in strings {
+        match value {
+            None => output.append_null(),
+            Some(text) => output.append_value(cached_count(
+                text,
+                encoding,
+                capacity,
+                &mut counts,
+                &mut order,
+            )?),
+        }
+    }
+
+    Ok(output.finish())
+}
+
+fn count_chunk_with_cache(
+    strings: &StringChunked,
+    encoding: &CoreBpe,
+    cache_capacity: Option<usize>,
+) -> PolarsResult<UInt32Chunked> {
+    match cache_capacity {
+        Some(capacity) => count_chunk_cached(strings, encoding, capacity),
+        None => count_chunk(strings, encoding),
+    }
 }
 
 fn categorical_output<T: PolarsCategoricalType>(
@@ -330,6 +409,7 @@ fn count_parallel(
     strings: &StringChunked,
     total_bytes: usize,
     encoding: &CoreBpe,
+    cache_capacity: Option<usize>,
 ) -> PolarsResult<UInt32Chunked> {
     let n_threads = THREAD_POOL.current_num_threads();
     let max_parts = n_threads.saturating_mul(TASKS_PER_THREAD).max(1);
@@ -337,7 +417,7 @@ fn count_parallel(
     // A dominant row cannot be split. If the other rows are too small to
     // amortize Rayon dispatch and output concatenation, stay sequential.
     if total_bytes.saturating_sub(largest_row_bytes) < PARALLEL_MIN_BYTES {
-        return count_chunk(strings, encoding);
+        return count_chunk_with_cache(strings, encoding, cache_capacity);
     }
 
     let chunks = POOL.install(|| {
@@ -347,7 +427,7 @@ fn count_parallel(
                 let offset = i64::try_from(offset).map_err(|_| {
                     PolarsError::ComputeError("row offset exceeds the Int64 range".into())
                 })?;
-                count_chunk(&strings.slice(offset, len), encoding)
+                count_chunk_with_cache(&strings.slice(offset, len), encoding, cache_capacity)
             })
             .collect::<PolarsResult<Vec<_>>>()
     })?;
@@ -368,6 +448,13 @@ fn token_count(
     kwargs: CountKwargs,
 ) -> PolarsResult<Series> {
     let encoding = resolve_encoding(&kwargs.tokenizer)?;
+    if let Some(capacity) = kwargs.cache_capacity {
+        if !(1..=MAX_CACHE_CAPACITY).contains(&capacity) {
+            return Err(PolarsError::ComputeError(
+                format!("cache_capacity must be between 1 and {MAX_CACHE_CAPACITY}").into(),
+            ));
+        }
+    }
 
     let input = &inputs[0];
     let output = match input.dtype() {
@@ -378,9 +465,9 @@ fn token_count(
                 && THREAD_POOL.current_num_threads() > 1
                 && total_bytes >= PARALLEL_MIN_BYTES;
             if should_parallelize {
-                count_parallel(strings, total_bytes, encoding)?
+                count_parallel(strings, total_bytes, encoding, kwargs.cache_capacity)?
             } else {
-                count_chunk(strings, encoding)?
+                count_chunk_with_cache(strings, encoding, kwargs.cache_capacity)?
             }
         }
         DataType::Categorical(_, _) | DataType::Enum(_, _) => {
@@ -495,7 +582,7 @@ mod tests {
 
         let encoding = resolve_encoding(O200K_BASE).unwrap();
         let sequential = count_chunk(&strings, encoding).unwrap();
-        let parallel = count_parallel(&strings, total_bytes, encoding).unwrap();
+        let parallel = count_parallel(&strings, total_bytes, encoding, None).unwrap();
         assert!(sequential.into_iter().eq(&parallel));
     }
 
@@ -515,7 +602,7 @@ mod tests {
 
         let encoding = resolve_encoding(O200K_BASE).unwrap();
         let sequential = count_chunk(&strings, encoding).unwrap();
-        let parallel = count_parallel(&strings, strings.get_values_size(), encoding).unwrap();
+        let parallel = count_parallel(&strings, strings.get_values_size(), encoding, None).unwrap();
         assert!(sequential.into_iter().eq(&parallel));
     }
 }

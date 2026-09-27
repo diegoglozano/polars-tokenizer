@@ -82,12 +82,26 @@ import polars_tokenizer as tokens
 df.select(tokens.count(pl.col("text"), tokenizer="o200k_base"))
 ```
 
+For ordinary string columns with many repeated values, opt into a bounded
+whole-value cache:
+
+```python
+df.select(tokens.count("text", cache_capacity=4096))
+```
+
+The cache stores borrowed strings and exact counts, with FIFO eviction and a
+limit of 1–65,536 entries per worker task. It does not change results or apply
+to categorical/enum columns, which already deduplicate values. Leave it off
+for mostly unique strings: hashing and eviction can reduce throughput.
+
 ## Why this implementation
 
 - The Rust kernel calls `CoreBpe::count`, a dedicated count-only BPE path. It
   never creates token IDs.
-- Polars string values are visited as borrowed `&str` views. No `Vec<String>`
-  or `Vec<&str>` is materialized.
+- Polars string values are visited as borrowed `&str` views. No full-column
+  `Vec<String>` or `Vec<&str>` is materialized.
+- An optional bounded cache reuses counts for repeated ordinary strings
+  without copying string data; the default path has no cache overhead.
 - Categorical and enum columns count each used dictionary value once, then map
   counts through their physical IDs without expanding rows to strings. Dense,
   sparse, and parallel paths bound overhead across different mappings.
@@ -186,14 +200,13 @@ property-generated Unicode strings. Inputs are never normalized.
 
 The public surface currently includes exact counting, versioned OpenAI model
 aliases, pinned cost estimation for GPT-4.1, GPT-4o, and GPT-5 with structured
-provenance, and
-caller-supplied price overrides.
-Token-count estimation, cache controls, fused aggregations, and DataFrame-level
-analytics are not exposed yet. The next changes should be driven by profiles
+provenance, caller-supplied price overrides, and opt-in bounded caching.
+Token-count estimation, fused aggregations, and DataFrame-level analytics are
+not exposed yet. The next changes should be driven by profiles
 and benchmark data in this order:
 
 1. establish controlled-host performance and memory baselines;
-2. benchmark bounded whole-value caches for non-categorical strings;
+2. establish a controlled-host cache crossover and peak-memory profile;
 3. optimize exceptionally large individual rows without oversubscription;
 4. add a separately measured estimator;
 5. expand dated model-price snapshots without coupling provider names to the
