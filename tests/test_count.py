@@ -89,6 +89,32 @@ def test_null_and_empty() -> None:
 
 
 @pytest.mark.parametrize("tokenizer", TOKENIZERS)
+@pytest.mark.parametrize("cache_capacity", [None, 2])
+def test_zero_byte_string_columns(tokenizer: Tokenizer, cache_capacity: int | None) -> None:
+    for values, expected in (
+        (["", "", ""], [0, 0, 0]),
+        ([None, None, None], [None, None, None]),
+        (["", None, ""], [0, None, 0]),
+        ([], []),
+    ):
+        first = pl.Series("text", values[:1], dtype=pl.String)
+        second = pl.Series("text", values[1:], dtype=pl.String)
+        frame = pl.DataFrame(first.append(second))
+        actual = frame.select(
+            tokens.count("text", tokenizer, cache_capacity=cache_capacity)
+        ).to_series()
+        assert actual.to_list() == expected
+        assert actual.dtype == pl.UInt32
+
+
+@pytest.mark.parametrize("value", ["", None])
+def test_zero_byte_string_columns_lazy_streaming(value: str | None) -> None:
+    frame = pl.DataFrame({"text": pl.Series([value] * 64, dtype=pl.String)})
+    result = frame.lazy().select(tokens.count("text")).collect(engine="streaming")
+    assert result.to_series().to_list() == ([0] if value == "" else [None]) * 64
+
+
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
 def test_non_null_multichunk_slice(tokenizer: Tokenizer) -> None:
     first = pl.Series("text", ["", "hello world", "你好，世界"])
     second = pl.Series("text", ["👋🏽", "line one\nline two", "<|endoftext|>"])
