@@ -3,7 +3,7 @@
 `polars-tokenizer` is a native Polars expression plugin for exact, count-only
 tokenization of string, categorical, and enum columns. It exposes exact counts
 and model-based raw-text cost estimates. Exact counting currently supports the
-`o200k_base` and `cl100k_base` tokenizer definitions:
+`o200k_base`, `cl100k_base`, `p50k_base`, and `r50k_base` tokenizer definitions:
 
 ```python
 import polars as pl
@@ -22,6 +22,9 @@ out = df.with_columns(pl.col("text").tokens.count(model="gpt-5").alias("token_co
 Aliases are exact, not prefix matches, and are pinned by
 `polars_tokenizer.MODEL_REGISTRY_VERSION`. Pass a tokenizer when reproducibility
 should not depend on a provider model name.
+The legacy `p50k_base` and `r50k_base` encodings are available by explicit
+name; this does not add legacy model or pricing aliases. Their distinct
+definitions are described in the [OpenAI tokenizer guide](https://developers.openai.com/cookbook/examples/how_to_count_tokens_with_tiktoken).
 
 Raw-text cost estimation is available for `gpt-4.1`, `gpt-4o`, and `gpt-5`
 with pinned direct OpenAI price snapshots:
@@ -109,7 +112,7 @@ for mostly unique strings: hashing and eviction can reduce throughput.
 - The function is registered as elementwise and uses Polars' own thread pool
   for byte-balanced work above 512 KiB. It stays sequential when the caller is
   already parallel, preventing nested oversubscription.
-- `o200k_base` and `cl100k_base` vocabulary data are compiled into the wheel
+- All four supported vocabulary definitions are compiled into the wheel
   and pinned by `Cargo.lock`; execution performs no network access.
 - Special-token-looking substrings are ordinary raw text. This matches
   `tiktoken.encode(text, disallowed_special=())`, not request/chat accounting.

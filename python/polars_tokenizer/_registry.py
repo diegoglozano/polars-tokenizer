@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
-Tokenizer: TypeAlias = Literal["cl100k_base", "o200k_base"]
+Tokenizer: TypeAlias = Literal["cl100k_base", "o200k_base", "p50k_base", "r50k_base"]
 Model: TypeAlias = Literal[
     "babbage-002",
     "davinci-002",

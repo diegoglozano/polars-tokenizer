@@ -20,7 +20,7 @@ from polars_tokenizer._registry import MODEL_REGISTRY_VERSION, Model, Tokenizer,
 IntoExpr: TypeAlias = str | pl.Expr | pl.Series
 
 _PLUGIN_PATH = Path(__file__).parent
-_SUPPORTED = frozenset({"cl100k_base", "o200k_base"})
+_SUPPORTED = frozenset({"cl100k_base", "o200k_base", "p50k_base", "r50k_base"})
 _MAX_CACHE_CAPACITY = 65_536
 
 
