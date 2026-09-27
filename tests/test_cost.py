@@ -73,6 +73,26 @@ def test_cost_expr_namespace() -> None:
     assert result.item() == pytest.approx(2 * 10.0 / 1_000_000)
 
 
+def test_cost_cache_capacity_matches_uncached_in_both_api_forms() -> None:
+    frame = pl.DataFrame({"text": ["hello world", None, "你好", "hello world", "你好"]})
+    result = (
+        frame.lazy()
+        .select(
+            tokens.estimate_cost("text", model="gpt-5", cache_capacity=2).alias("cached_function"),
+            tokens.estimate_cost("text", model="gpt-5").alias("uncached"),
+            pl.col("text")
+            .tokens.estimate_cost(  # ty: ignore[unresolved-attribute]
+                model="gpt-5", cache_capacity=2
+            )
+            .alias("cached_namespace"),
+        )
+        .collect(engine="streaming")
+    )
+
+    assert result["cached_function"].to_list() == result["uncached"].to_list()
+    assert result["cached_namespace"].to_list() == result["uncached"].to_list()
+
+
 def test_cost_details_include_exact_mode_and_pinned_price_metadata() -> None:
     result = (
         pl.DataFrame({"text": ["hello world", None, ""]})
@@ -107,6 +127,39 @@ def test_cost_details_include_exact_mode_and_pinned_price_metadata() -> None:
     assert values[0]["price_source_url"].startswith("https://developers.openai.com/")
 
 
+def test_cost_details_cache_capacity_matches_uncached_in_both_api_forms() -> None:
+    frame = pl.DataFrame({"text": ["hello world", None, "你好", "hello world", "你好"]})
+    result = (
+        frame.lazy()
+        .select(
+            tokens.estimate_cost_details("text", model="gpt-5", cache_capacity=2).alias(
+                "cached_function"
+            ),
+            tokens.estimate_cost_details("text", model="gpt-5").alias("uncached"),
+            pl.col("text")
+            .tokens.estimate_cost_details(  # ty: ignore[unresolved-attribute]
+                model="gpt-5", cache_capacity=2
+            )
+            .alias("cached_namespace"),
+        )
+        .collect(engine="streaming")
+    )
+
+    assert result["cached_function"].to_list() == result["uncached"].to_list()
+    assert result["cached_namespace"].to_list() == result["uncached"].to_list()
+
+
+@pytest.mark.parametrize("capacity", [0, True, 65_537])
+def test_cost_cache_capacity_validation(capacity: object) -> None:
+    for builder in (tokens.estimate_cost, tokens.estimate_cost_details):
+        with pytest.raises(ValueError, match="cache_capacity must be an integer"):
+            builder(
+                "text",
+                model="gpt-5",
+                cache_capacity=capacity,  # ty: ignore[invalid-argument-type]
+            )
+
+
 def test_cost_details_label_caller_override_without_inventing_price_snapshot() -> None:
     result = pl.DataFrame({"text": ["hello world"]}).select(
         tokens.estimate_cost_details(
@@ -129,8 +182,9 @@ def test_cost_details_label_caller_override_without_inventing_price_snapshot() -
     assert value["price_source_url"] is None
 
 
-def test_cost_details_optimized_plan_shares_token_count() -> None:
-    expression = tokens.estimate_cost_details("text", model="gpt-5")
+@pytest.mark.parametrize("cache_capacity", [None, 2])
+def test_cost_details_optimized_plan_shares_token_count(cache_capacity: int | None) -> None:
+    expression = tokens.estimate_cost_details("text", model="gpt-5", cache_capacity=cache_capacity)
     plan = pl.DataFrame({"text": ["hello"]}).lazy().select(expression).explain()
 
     assert plan.count(":token_count()") == 1
