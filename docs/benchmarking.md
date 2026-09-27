@@ -326,6 +326,8 @@ exploratory: it covers only two Python projects, and code is 1.5% of records.
 corpus manifest, regenerates pinned exact labels, and prints split-by-format
 coverage: record counts, natural-language labels, ASCII count, UTF-8 length
 buckets and ranges, plus median/P95/max exact-token counts for each encoding.
+Missing split/format combinations appear with zero records and null summary
+statistics rather than being omitted.
 It ties its output to both the corpus and exact-label SHA-256 values. On the
 three-format candidate, held-out prose has 640 records but no long rows;
 held-out JSON has 11 files (8 long), and held-out Python has 25 files (18
