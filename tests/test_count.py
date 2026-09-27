@@ -115,6 +115,26 @@ def test_zero_byte_string_columns_lazy_streaming(value: str | None) -> None:
 
 
 @pytest.mark.parametrize("tokenizer", TOKENIZERS)
+@pytest.mark.parametrize("cache_capacity", [None, 2])
+def test_all_null_string_views_with_retained_bytes(
+    tokenizer: Tokenizer, cache_capacity: int | None
+) -> None:
+    original = pl.Series("text", ["hello world", "你好，世界"] * 32)
+    values = original.set(pl.Series([True] * len(original)), None)
+    assert values.dtype == pl.String
+    assert values.null_count() == len(values)
+    actual = (
+        pl.DataFrame(values)
+        .lazy()
+        .select(tokens.count("text", tokenizer, cache_capacity=cache_capacity))
+        .collect(engine="streaming")
+        .to_series()
+    )
+    assert actual.dtype == pl.UInt32
+    assert actual.to_list() == [None] * len(values)
+
+
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
 def test_non_null_multichunk_slice(tokenizer: Tokenizer) -> None:
     first = pl.Series("text", ["", "hello world", "你好，世界"])
     second = pl.Series("text", ["👋🏽", "line one\nline two", "<|endoftext|>"])
