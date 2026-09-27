@@ -29,7 +29,8 @@ across Polars worker threads.
 The expression is elementwise and batch independent. For calls of at least 512
 KiB where Polars reports that the caller is not already parallel, the kernel
 partitions contiguous rows by logical UTF-8 bytes and executes four tasks per
-worker on Polars' own thread pool. Collecting the indexed parallel iterator
+worker for uncached input or one task per worker when caching is enabled, on
+Polars' own thread pool. Collecting the indexed parallel iterator
 preserves row order. Smaller calls and already-parallel contexts stay
 sequential, avoiding dispatch overhead and nested oversubscription.
 

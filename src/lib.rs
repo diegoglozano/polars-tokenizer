@@ -412,7 +412,14 @@ fn count_parallel(
     cache_capacity: Option<usize>,
 ) -> PolarsResult<UInt32Chunked> {
     let n_threads = THREAD_POOL.current_num_threads();
-    let max_parts = n_threads.saturating_mul(TASKS_PER_THREAD).max(1);
+    // More partitions help balance uncached rows with uneven tokenization
+    // costs. Cached partitions each need to warm their own lookup, so keep
+    // one partition per worker when caching is enabled.
+    let max_parts = if cache_capacity.is_some() {
+        n_threads.max(1)
+    } else {
+        n_threads.saturating_mul(TASKS_PER_THREAD).max(1)
+    };
     let (ranges, largest_row_bytes) = byte_balanced_ranges(strings, total_bytes, max_parts);
     // A dominant row cannot be split. If the other rows are too small to
     // amortize Rayon dispatch and output concatenation, stay sequential.
@@ -584,6 +591,8 @@ mod tests {
         let sequential = count_chunk(&strings, encoding).unwrap();
         let parallel = count_parallel(&strings, total_bytes, encoding, None).unwrap();
         assert!(sequential.into_iter().eq(&parallel));
+        let cached = count_parallel(&strings, total_bytes, encoding, Some(2)).unwrap();
+        assert!(parallel.into_iter().eq(&cached));
     }
 
     #[test]
@@ -604,5 +613,8 @@ mod tests {
         let sequential = count_chunk(&strings, encoding).unwrap();
         let parallel = count_parallel(&strings, strings.get_values_size(), encoding, None).unwrap();
         assert!(sequential.into_iter().eq(&parallel));
+        let cached =
+            count_parallel(&strings, strings.get_values_size(), encoding, Some(256)).unwrap();
+        assert!(parallel.into_iter().eq(&cached));
     }
 }
