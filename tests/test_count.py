@@ -344,6 +344,25 @@ def test_non_null_categorical_multichunk_slice(tokenizer: Tokenizer) -> None:
     assert actual.to_list() == expected
 
 
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
+def test_large_non_null_dense_categorical_and_enum(tokenizer: Tokenizer) -> None:
+    categories = [f"category-{index:04}: hello world" for index in range(1_000)]
+    values = [categories[index % len(categories)] for index in range(20_000)]
+    reference = {value: reference_count(value, tokenizer) for value in categories}
+    expected = [reference[value] for value in values]
+
+    for dtype in (pl.Categorical, pl.Enum([*categories, "unused category"])):
+        frame = pl.DataFrame({"text": pl.Series(values, dtype=dtype)})
+        actual = (
+            frame.lazy()
+            .select(tokens.count("text", tokenizer))
+            .collect(engine="streaming")
+            .to_series()
+        )
+        assert actual.dtype == pl.UInt32
+        assert actual.to_list() == expected
+
+
 def test_enum_with_unused_categories() -> None:
     values = ["alpha", None, "beta", "alpha"]
     dtype = pl.Enum(["unused", "alpha", "beta", "also unused"])
