@@ -128,7 +128,8 @@ The same `cache_capacity` option is available on `estimate_cost()` and
   sparse, and parallel paths bound overhead across different mappings.
 - Nulls are appended directly to a pre-sized `UInt32` output builder.
 - All-empty text and all-null String, Binary, Categorical, or Enum batches
-  produce constant output directly, without per-row tokenizer work.
+  produce constant output directly, without loading a vocabulary or doing
+  per-row tokenizer work.
 - The function is registered as elementwise and uses Polars' own thread pool
   for byte-balanced work above 512 KiB. It stays sequential when the caller is
   already parallel, preventing nested oversubscription.

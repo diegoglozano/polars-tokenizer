@@ -22,9 +22,10 @@ borrowed String or Binary views directly. Binary values are validated as UTF-8
 only when their row is non-null; null views can retain arbitrary old bytes.
 
 The count-only tokenizer pre-tokenizes text and computes the number of surviving
-BPE parts. It does not collect token IDs. The static vocabulary is initialized
-once and then shared immutably, which makes execution deterministic and safe
-across Polars worker threads.
+BPE parts. It does not collect token IDs. A static vocabulary is initialized
+only when nonempty text needs counting, then shared immutably across Polars
+worker threads. All-null and all-empty batches return constant results without
+paying that cold-start cost.
 
 ## Parallelism boundary
 
