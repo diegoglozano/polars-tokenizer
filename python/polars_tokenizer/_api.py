@@ -51,10 +51,11 @@ def count(
 ) -> pl.Expr:
     """Return the exact raw-text token count as a UInt32 expression.
 
-    Null input produces null output. Special-token-looking substrings are
-    treated as ordinary text; no Unicode normalization is applied.
+    String, UTF-8 Binary, Categorical, and Enum inputs are supported. Invalid
+    non-null Binary UTF-8 raises an error; null input produces null output.
+    Special-token-looking substrings are ordinary text; no normalization applies.
 
-    For repeated ordinary string values, ``cache_capacity`` enables a bounded
+    For repeated String or Binary values, ``cache_capacity`` enables a bounded
     FIFO cache of exact counts. It is opt-in because hashing mostly unique
     values can be slower. Categorical and enum columns already count each
     category once, so this setting has no effect on them.
@@ -92,7 +93,7 @@ def estimate_cost(
     replace the registry rate with an explicit USD-per-million-token value or
     select an exact bundled snapshot date.
 
-    ``cache_capacity`` applies the same opt-in string cache as :func:`count`.
+    ``cache_capacity`` applies the same opt-in text cache as :func:`count`.
     """
     price_per_token = resolve_price_per_token(
         model, category, usd_per_million_tokens, snapshot_date=snapshot_date
@@ -117,7 +118,7 @@ def estimate_cost_details(
     Caller-supplied rates have no pinned snapshot or known serving provider.
     `snapshot_date` selects one exact bundled price snapshot.
 
-    ``cache_capacity`` applies the same opt-in string cache as :func:`count`.
+    ``cache_capacity`` applies the same opt-in text cache as :func:`count`.
     """
     price_per_token = resolve_price_per_token(
         model, category, usd_per_million_tokens, snapshot_date=snapshot_date
@@ -171,7 +172,7 @@ class TokenExprNameSpace:
         model: Model | None = None,
         cache_capacity: int | None = None,
     ) -> pl.Expr:
-        """Return exact token counts for this string expression."""
+        """Return exact token counts for this text expression."""
         return count(
             self._expr,
             tokenizer=tokenizer,

@@ -520,7 +520,7 @@ def test_unsupported_tokenizer_fails_early() -> None:
 
 def test_non_string_column_errors() -> None:
     with pytest.raises(
-        pl.exceptions.ComputeError, match="expected `String`, `Categorical`, or `Enum`"
+        pl.exceptions.ComputeError, match="expected `String`, `Binary`, `Categorical`, or `Enum`"
     ):
         pl.DataFrame({"value": [1, 2]}).select(tokens.count("value"))
 

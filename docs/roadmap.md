@@ -11,6 +11,8 @@ estimation.
 
 - Implemented tokenizer definitions: `o200k_base`, `cl100k_base`,
   `p50k_base`, and `r50k_base`.
+- Implemented strict UTF-8 Binary input beside String, Categorical, and Enum.
+  Only non-null binary values are validated; see [Binary input](binary-input.md).
 - Establish controlled-host throughput, scaling, CPU, and peak-memory
   baselines with the benchmark matrix.
 - Profile pre-tokenization, BPE merging, output construction, and Polars
@@ -25,7 +27,7 @@ estimation.
   symbol-resolving profiler or explicit tokenizer instrumentation.
 - Implemented: categorical/enum inputs count each used dictionary value once
   with dense, sparse, and parallel physical-ID paths.
-- Opt-in bounded whole-value caching is available for repeated string values.
+- Opt-in bounded whole-value caching is available for repeated String or Binary text.
   Experimental benchmarks cover 0.01%, 0.1%, 1%, 10%, 50%, and 100%
   cardinality. Repeat them on a controlled host with end-to-end memory
   measurements before choosing an automatic policy.

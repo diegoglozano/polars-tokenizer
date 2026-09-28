@@ -3,11 +3,12 @@
 ## Current execution path
 
 ```text
-Polars String Series              Categorical / Enum Series
-   | borrowed StringViews          | physical IDs + mapping
-   v                               v
-byte-balanced count kernel    count each used value once
-   |                               | dense/sparse lookup
+Polars String / Binary Series     Categorical / Enum Series
+   | borrowed views                 | physical IDs + mapping
+   | valid UTF-8 for Binary         v
+   v                           count each used value once
+byte-balanced count kernel        | dense/sparse lookup
+   |                               |
    +---------------+---------------+
                    |
                    v
@@ -17,7 +18,8 @@ byte-balanced count kernel    count each used value once
 The Python layer constructs an expression and passes a small serialized
 tokenizer identifier and optional cache capacity. It never sees row values.
 Polars transports Series across the plugin ABI, and the Rust function iterates
-borrowed string views directly.
+borrowed String or Binary views directly. Binary values are validated as UTF-8
+only when their row is non-null; null views can retain arbitrary old bytes.
 
 The count-only tokenizer pre-tokenizes text and computes the number of surviving
 BPE parts. It does not collect token IDs. The static vocabulary is initialized
@@ -45,8 +47,8 @@ Rows are indivisible. One exceptionally large string can therefore dominate a
 partition; splitting safely at tokenizer pre-token boundaries is a separate
 future optimization.
 
-For repeated ordinary strings, callers can opt into a FIFO cache of exact
-counts. Its keys borrow input string views, and each sequential or parallel
+For repeated ordinary String or Binary text, callers can opt into a FIFO cache
+of exact counts. Its keys borrow input views, and each sequential or parallel
 task has its own cache with at most the requested number of entries. The
 default path allocates no cache. Categorical and enum inputs already deduplicate
 their values and do not use this cache.
@@ -62,11 +64,11 @@ must never change a tokenizer definition in place.
 
 Aside from one-time immutable vocabulary state, a call retains input buffers,
 one UInt32 value per row, a validity bitmap when nulls exist, and bounded
-tokenizer scratch state. Opt-in string caching adds at most the requested
+tokenizer scratch state. Opt-in text caching adds at most the requested
 number of borrowed keys and counts per task, plus FIFO bookkeeping.
 Categorical inputs additionally use a count lookup
 proportional to their mapping when dense, or to encountered values when the
-mapping is disproportionately large. The kernel does not copy input strings
+mapping is disproportionately large. The kernel does not copy input text
 or allocate token ID arrays. The output builder deliberately reports an error
 rather than truncate if an individual count exceeds `UInt32::MAX`.
 

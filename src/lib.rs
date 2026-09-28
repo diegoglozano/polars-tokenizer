@@ -13,7 +13,7 @@ use polars::polars_utils::aliases::PlHashMap;
 use polars::prelude::*;
 use pyo3_polars::PolarsAllocator;
 use pyo3_polars::derive::{CallerContext, polars_expr};
-use pyo3_polars::export::polars_arrow::array::{Array, PrimitiveArray, ValueSize};
+use pyo3_polars::export::polars_arrow::array::{Array, BinaryViewArray, PrimitiveArray, ValueSize};
 use pyo3_polars::export::polars_core::{POOL, THREAD_POOL};
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -232,6 +232,84 @@ fn count_chunk_with_cache(
     }
 }
 
+fn binary_text(bytes: &[u8]) -> PolarsResult<&str> {
+    std::str::from_utf8(bytes)
+        .map_err(|_| PolarsError::ComputeError("Binary input contains invalid UTF-8".into()))
+}
+
+#[inline]
+fn cached_binary_count<'a>(
+    bytes: &'a [u8],
+    encoding: &CoreBpe,
+    capacity: usize,
+    counts: &mut PlHashMap<&'a [u8], u32>,
+    order: &mut VecDeque<&'a [u8]>,
+) -> PolarsResult<u32> {
+    // A hit has already passed strict UTF-8 validation. Invalid bytes are
+    // never inserted, so only misses need to be decoded.
+    if let Some(&count) = counts.get(bytes) {
+        return Ok(count);
+    }
+    let count = checked_count(binary_text(bytes)?, encoding)?;
+    if counts.len() == capacity {
+        if let Some(oldest) = order.pop_front() {
+            counts.remove(oldest);
+        }
+    }
+    counts.insert(bytes, count);
+    order.push_back(bytes);
+    Ok(count)
+}
+
+fn count_binary_chunk_with<'a>(
+    binary: &'a BinaryChunked,
+    mut count_bytes: impl FnMut(&'a [u8]) -> PolarsResult<u32>,
+) -> PolarsResult<UInt32Chunked> {
+    let mut output =
+        PrimitiveChunkedBuilder::<UInt32Type>::new(binary.name().clone(), binary.len());
+
+    if binary.null_count() == 0 {
+        for bytes in binary.into_no_null_iter() {
+            output.append_value(count_bytes(bytes)?);
+        }
+    } else {
+        for value in binary {
+            match value {
+                None => output.append_null(),
+                Some(bytes) => output.append_value(count_bytes(bytes)?),
+            }
+        }
+    }
+    Ok(output.finish())
+}
+
+fn count_binary_chunk(
+    binary: &BinaryChunked,
+    encoding: &CoreBpe,
+    cache_capacity: Option<usize>,
+) -> PolarsResult<UInt32Chunked> {
+    match cache_capacity {
+        Some(capacity) => {
+            let mut counts: PlHashMap<&[u8], u32> = PlHashMap::default();
+            let mut order: VecDeque<&[u8]> = VecDeque::new();
+            count_binary_chunk_with(binary, |bytes| {
+                cached_binary_count(bytes, encoding, capacity, &mut counts, &mut order)
+            })
+        }
+        None => {
+            count_binary_chunk_with(binary, |bytes| checked_count(binary_text(bytes)?, encoding))
+        }
+    }
+}
+
+fn empty_binary_with_nulls(binary: &BinaryChunked) -> UInt32Chunked {
+    let arrays = binary.downcast_iter().map(|chunk| {
+        PrimitiveArray::<u32>::from_vec(vec![0; chunk.len()])
+            .with_validity(chunk.validity().cloned())
+    });
+    UInt32Chunked::from_chunk_iter(binary.name().clone(), arrays)
+}
+
 fn empty_strings_with_nulls(strings: &StringChunked) -> UInt32Chunked {
     // The valid byte size is zero, so every valid string is empty. Reuse
     // each input chunk's null bitmap rather than visiting or tokenizing rows.
@@ -422,21 +500,22 @@ fn count_categorical<T: PolarsCategoricalType>(
 ///
 /// A row is never split, so one exceptionally large value may still dominate
 /// a range. Empty and null rows remain attached to a neighboring range.
-fn byte_balanced_ranges(
-    strings: &StringChunked,
+fn byte_balanced_ranges_from_lengths(
+    len: usize,
     total_bytes: usize,
     max_parts: usize,
+    lengths: impl Iterator<Item = usize>,
 ) -> (Vec<(usize, usize)>, usize) {
     debug_assert!(max_parts > 0);
-    if strings.is_empty() {
+    if len == 0 {
         return (Vec::new(), 0);
     }
 
-    let mut ranges = Vec::with_capacity(max_parts.min(strings.len()));
+    let mut ranges = Vec::with_capacity(max_parts.min(len));
     let mut start = 0;
     let mut range_bytes = 0;
     let mut remaining_bytes = total_bytes;
-    let mut remaining_parts = max_parts.min(strings.len());
+    let mut remaining_parts = max_parts.min(len);
     let mut largest_row_bytes = 0;
 
     let mut index = 0;
@@ -444,7 +523,7 @@ fn byte_balanced_ranges(
         range_bytes += row_bytes;
         largest_row_bytes = largest_row_bytes.max(row_bytes);
         let target = remaining_bytes.div_ceil(remaining_parts);
-        let rows_remaining = strings.len() - index - 1;
+        let rows_remaining = len - index - 1;
 
         if remaining_parts > 1 && range_bytes >= target && rows_remaining > 0 {
             ranges.push((start, index + 1 - start));
@@ -456,24 +535,53 @@ fn byte_balanced_ranges(
         index += 1;
     };
 
+    for row_bytes in lengths {
+        add_row(row_bytes);
+    }
+    debug_assert_eq!(index, len);
+
+    if start < len {
+        ranges.push((start, len - start));
+    }
+    (ranges, largest_row_bytes)
+}
+
+fn byte_balanced_ranges(
+    strings: &StringChunked,
+    total_bytes: usize,
+    max_parts: usize,
+) -> (Vec<(usize, usize)>, usize) {
     // Length is stored directly in each view. Reading it avoids touching
     // string payload buffers merely to schedule tokenization work.
-    for chunk in strings.downcast_iter() {
+    let lengths = strings.downcast_iter().flat_map(|chunk| {
         let validity = chunk.validity();
-        for (offset, view) in chunk.views().iter().enumerate() {
-            let row_bytes = if validity.is_none_or(|bitmap| bitmap.get_bit(offset)) {
+        chunk.views().iter().enumerate().map(move |(offset, view)| {
+            if validity.is_none_or(|bitmap| bitmap.get_bit(offset)) {
                 view.length as usize
             } else {
                 0
-            };
-            add_row(row_bytes);
-        }
-    }
+            }
+        })
+    });
+    byte_balanced_ranges_from_lengths(strings.len(), total_bytes, max_parts, lengths)
+}
 
-    if start < strings.len() {
-        ranges.push((start, strings.len() - start));
-    }
-    (ranges, largest_row_bytes)
+fn binary_byte_balanced_ranges(
+    binary: &BinaryChunked,
+    total_bytes: usize,
+    max_parts: usize,
+) -> (Vec<(usize, usize)>, usize) {
+    let lengths = binary.downcast_iter().flat_map(|chunk| {
+        let validity = chunk.validity();
+        chunk.views().iter().enumerate().map(move |(offset, view)| {
+            if validity.is_none_or(|bitmap| bitmap.get_bit(offset)) {
+                view.length as usize
+            } else {
+                0
+            }
+        })
+    });
+    byte_balanced_ranges_from_lengths(binary.len(), total_bytes, max_parts, lengths)
 }
 
 fn count_parallel(
@@ -516,6 +624,86 @@ fn count_parallel(
         strings.name().clone(),
         arrays,
     ))
+}
+
+fn count_binary_parallel(
+    binary: &BinaryChunked,
+    total_bytes: usize,
+    encoding: &CoreBpe,
+    cache_capacity: Option<usize>,
+) -> PolarsResult<UInt32Chunked> {
+    let n_threads = THREAD_POOL.current_num_threads();
+    let max_parts = if cache_capacity.is_some() {
+        n_threads.max(1)
+    } else {
+        n_threads.saturating_mul(TASKS_PER_THREAD).max(1)
+    };
+    let (ranges, largest_row_bytes) = binary_byte_balanced_ranges(binary, total_bytes, max_parts);
+    if total_bytes.saturating_sub(largest_row_bytes) < PARALLEL_MIN_BYTES {
+        return count_binary_chunk(binary, encoding, cache_capacity);
+    }
+
+    let chunks = POOL.install(|| {
+        ranges
+            .into_par_iter()
+            .map(|(offset, len)| {
+                let offset = i64::try_from(offset).map_err(|_| {
+                    PolarsError::ComputeError("row offset exceeds the Int64 range".into())
+                })?;
+                count_binary_chunk(&binary.slice(offset, len), encoding, cache_capacity)
+            })
+            .collect::<PolarsResult<Vec<_>>>()
+    })?;
+    let arrays = chunks
+        .into_iter()
+        .flat_map(|chunk| chunk.downcast_iter().cloned().collect::<Vec<_>>());
+    Ok(UInt32Chunked::from_chunk_iter(
+        binary.name().clone(),
+        arrays,
+    ))
+}
+
+fn count_binary_input(
+    binary: &BinaryChunked,
+    encoding: &CoreBpe,
+    cache_capacity: Option<usize>,
+    allow_parallel: bool,
+) -> PolarsResult<UInt32Chunked> {
+    let null_count = binary.null_count();
+    if null_count == binary.len() {
+        return Ok(UInt32Chunked::full_null(
+            binary.name().clone(),
+            binary.len(),
+        ));
+    }
+
+    let physical_bytes: usize = binary
+        .downcast_iter()
+        .map(BinaryViewArray::total_bytes_len)
+        .sum();
+    let total_bytes =
+        if physical_bytes >= PARALLEL_MIN_BYTES && null_count >= binary.len() - binary.len() / 8 {
+            binary
+                .downcast_iter()
+                .flat_map(|chunk| chunk.non_null_views_iter())
+                .map(|view| view.length as usize)
+                .sum()
+        } else {
+            physical_bytes
+        };
+    if total_bytes == 0 {
+        return Ok(if null_count == 0 {
+            UInt32Chunked::full(binary.name().clone(), 0, binary.len())
+        } else {
+            empty_binary_with_nulls(binary)
+        });
+    }
+
+    if allow_parallel && total_bytes >= PARALLEL_MIN_BYTES {
+        count_binary_parallel(binary, total_bytes, encoding, cache_capacity)
+    } else {
+        count_binary_chunk(binary, encoding, cache_capacity)
+    }
 }
 
 #[polars_expr(output_type=UInt32)]
@@ -579,6 +767,12 @@ fn token_count(
                 }
             }
         }
+        DataType::Binary => count_binary_input(
+            input.binary()?,
+            encoding,
+            kwargs.cache_capacity,
+            !context.parallel() && THREAD_POOL.current_num_threads() > 1,
+        )?,
         DataType::Categorical(_, _) | DataType::Enum(_, _) => {
             if input.null_count() == input.len() {
                 // No category IDs are used, so neither the mapping nor a
@@ -596,7 +790,8 @@ fn token_count(
         }
         dtype => {
             return Err(PolarsError::ComputeError(
-                format!("expected `String`, `Categorical`, or `Enum`, got {dtype}").into(),
+                format!("expected `String`, `Binary`, `Categorical`, or `Enum`, got {dtype}")
+                    .into(),
             ));
         }
     };
