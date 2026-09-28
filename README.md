@@ -1,8 +1,8 @@
 # polars-tokenizer
 
 `polars-tokenizer` is a native Polars expression plugin for exact, count-only
-tokenization of string, categorical, and enum columns. It exposes exact counts
-and model-based raw-text cost estimates. Exact counting currently supports the
+tokenization of String, UTF-8 Binary, Categorical, and Enum columns. It exposes
+exact counts and model-based raw-text cost estimates. Exact counting supports
 `o200k_base`, `cl100k_base`, `p50k_base`, and `r50k_base` tokenizer definitions:
 
 ```python
@@ -85,14 +85,29 @@ import polars_tokenizer as tokens
 df.select(tokens.count(pl.col("text"), tokenizer="o200k_base"))
 ```
 
-For ordinary string columns with many repeated values, opt into a bounded
+Binary columns containing UTF-8 text are accepted without a full-column
+string conversion. Invalid UTF-8 in a non-null value raises an error; null
+values stay null even if their underlying bytes are invalid. See
+[Binary input](docs/binary-input.md) for details.
+
+```python
+import polars as pl
+import polars_tokenizer as tokens
+
+binary_df = pl.DataFrame(
+    {"text": pl.Series([b"hello world", None, "你好".encode()], dtype=pl.Binary)}
+)
+binary_counts = binary_df.select(tokens.count("text"))
+```
+
+For String or Binary columns with many repeated values, opt into a bounded
 whole-value cache:
 
 ```python
 df.select(tokens.count("text", cache_capacity=4096))
 ```
 
-The cache stores borrowed strings and exact counts, with FIFO eviction and a
+The cache stores borrowed text and exact counts, with FIFO eviction and a
 limit of 1–65,536 entries per worker task. It does not change results or apply
 to categorical/enum columns, which already deduplicate values. Leave it off
 for mostly unique strings: hashing and eviction can reduce throughput.
@@ -103,16 +118,17 @@ The same `cache_capacity` option is available on `estimate_cost()` and
 
 - The Rust kernel calls `CoreBpe::count`, a dedicated count-only BPE path. It
   never creates token IDs.
-- Polars string values are visited as borrowed `&str` views. No full-column
-  `Vec<String>` or `Vec<&str>` is materialized.
-- An optional bounded cache reuses counts for repeated ordinary strings
+- Polars String values are visited as borrowed `&str` views; Binary values are
+  validated as UTF-8 only when non-null. No full-column `Vec<String>` or
+  `Vec<&str>` is materialized.
+- An optional bounded cache reuses counts for repeated ordinary text
   without copying string data; the default path has no cache overhead.
 - Categorical and enum columns count each used dictionary value once, then map
   counts through their physical IDs without expanding rows to strings. Dense,
   sparse, and parallel paths bound overhead across different mappings.
 - Nulls are appended directly to a pre-sized `UInt32` output builder.
-- All-empty strings and all-null string, categorical, or enum batches produce
-  constant output directly, without per-row tokenizer work.
+- All-empty text and all-null String, Binary, Categorical, or Enum batches
+  produce constant output directly, without per-row tokenizer work.
 - The function is registered as elementwise and uses Polars' own thread pool
   for byte-balanced work above 512 KiB. It stays sequential when the caller is
   already parallel, preventing nested oversubscription.
