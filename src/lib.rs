@@ -502,26 +502,30 @@ fn token_count(
     let output = match input.dtype() {
         DataType::String => {
             let strings = input.str()?;
-            let total_bytes = strings.get_values_size();
-            if total_bytes == 0 {
-                // No visible UTF-8 bytes means each row is either empty or
-                // null. Homogeneous columns can produce constant output
-                // without invoking the tokenizer or visiting every row.
-                match strings.null_count() {
-                    0 => UInt32Chunked::full(strings.name().clone(), 0, strings.len()),
-                    nulls if nulls == strings.len() => {
-                        UInt32Chunked::full_null(strings.name().clone(), strings.len())
-                    }
-                    _ => count_chunk_with_cache(strings, encoding, kwargs.cache_capacity)?,
-                }
+            let null_count = strings.null_count();
+            if null_count == strings.len() {
+                // A null StringView may still reference non-empty bytes from
+                // an earlier value. Check validity before physical byte size.
+                UInt32Chunked::full_null(strings.name().clone(), strings.len())
             } else {
-                let should_parallelize = !context.parallel()
-                    && THREAD_POOL.current_num_threads() > 1
-                    && total_bytes >= PARALLEL_MIN_BYTES;
-                if should_parallelize {
-                    count_parallel(strings, total_bytes, encoding, kwargs.cache_capacity)?
+                let total_bytes = strings.get_values_size();
+                if total_bytes == 0 {
+                    // Every non-null value is empty. Mixed empty/null input
+                    // still needs its validity copied to the output.
+                    if null_count == 0 {
+                        UInt32Chunked::full(strings.name().clone(), 0, strings.len())
+                    } else {
+                        count_chunk_with_cache(strings, encoding, kwargs.cache_capacity)?
+                    }
                 } else {
-                    count_chunk_with_cache(strings, encoding, kwargs.cache_capacity)?
+                    let should_parallelize = !context.parallel()
+                        && THREAD_POOL.current_num_threads() > 1
+                        && total_bytes >= PARALLEL_MIN_BYTES;
+                    if should_parallelize {
+                        count_parallel(strings, total_bytes, encoding, kwargs.cache_capacity)?
+                    } else {
+                        count_chunk_with_cache(strings, encoding, kwargs.cache_capacity)?
+                    }
                 }
             }
         }
