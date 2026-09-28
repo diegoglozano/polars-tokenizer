@@ -286,6 +286,23 @@ def test_large_parallel_batch_matches_reference_and_is_deterministic() -> None:
         assert actual == expected
 
 
+def test_parallel_multichunk_nullable_slice_matches_reference() -> None:
+    values = [
+        None if index % 13 == 0 else f"row {index}: hello 世界 👋🏽 " * 6 for index in range(12_000)
+    ]
+    first = pl.Series("text", values[:6_000])
+    second = pl.Series("text", values[6_000:])
+    sliced = first.append(second).slice(7, 11_980)
+    assert sliced.n_chunks() > 1
+    assert sliced.str.len_bytes().sum() > 512 * 1024
+    expected = [reference_count(value) if value is not None else None for value in sliced]
+
+    frame = pl.DataFrame(sliced)
+    for cache_capacity in (None, 64):
+        actual = frame.select(tokens.count("text", cache_capacity=cache_capacity)).to_series()
+        assert actual.to_list() == expected
+
+
 def test_byte_balancing_handles_one_large_row() -> None:
     values = ["small", ("one very long row " * 20_000), None, "tail"]
     frame = pl.DataFrame({"text": values})

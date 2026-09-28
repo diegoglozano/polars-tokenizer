@@ -429,8 +429,8 @@ fn byte_balanced_ranges(
     let mut remaining_parts = max_parts.min(strings.len());
     let mut largest_row_bytes = 0;
 
-    for (index, value) in strings.into_iter().enumerate() {
-        let row_bytes = value.map_or(0, str::len);
+    let mut index = 0;
+    let mut add_row = |row_bytes: usize| {
         range_bytes += row_bytes;
         largest_row_bytes = largest_row_bytes.max(row_bytes);
         let target = remaining_bytes.div_ceil(remaining_parts);
@@ -442,6 +442,21 @@ fn byte_balanced_ranges(
             remaining_bytes = remaining_bytes.saturating_sub(range_bytes);
             remaining_parts -= 1;
             range_bytes = 0;
+        }
+        index += 1;
+    };
+
+    // Length is stored directly in each view. Reading it avoids touching
+    // string payload buffers merely to schedule tokenization work.
+    for chunk in strings.downcast_iter() {
+        let validity = chunk.validity();
+        for (offset, view) in chunk.views().iter().enumerate() {
+            let row_bytes = if validity.is_none_or(|bitmap| bitmap.get_bit(offset)) {
+                view.length as usize
+            } else {
+                0
+            };
+            add_row(row_bytes);
         }
     }
 
