@@ -12,7 +12,7 @@ use std::collections::{HashMap, VecDeque};
 use polars::prelude::*;
 use pyo3_polars::PolarsAllocator;
 use pyo3_polars::derive::{CallerContext, polars_expr};
-use pyo3_polars::export::polars_arrow::array::ValueSize;
+use pyo3_polars::export::polars_arrow::array::{Array, PrimitiveArray, ValueSize};
 use pyo3_polars::export::polars_core::{POOL, THREAD_POOL};
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -229,6 +229,16 @@ fn count_chunk_with_cache(
         Some(capacity) => count_chunk_cached(strings, encoding, capacity),
         None => count_chunk(strings, encoding),
     }
+}
+
+fn empty_strings_with_nulls(strings: &StringChunked) -> UInt32Chunked {
+    // The physical byte size is zero, so every valid string is empty. Reuse
+    // each input chunk's null bitmap rather than visiting or tokenizing rows.
+    let arrays = strings.downcast_iter().map(|chunk| {
+        PrimitiveArray::<u32>::from_vec(vec![0; chunk.len()])
+            .with_validity(chunk.validity().cloned())
+    });
+    UInt32Chunked::from_chunk_iter(strings.name().clone(), arrays)
 }
 
 fn categorical_output<T: PolarsCategoricalType>(
@@ -515,7 +525,7 @@ fn token_count(
                     if null_count == 0 {
                         UInt32Chunked::full(strings.name().clone(), 0, strings.len())
                     } else {
-                        count_chunk_with_cache(strings, encoding, kwargs.cache_capacity)?
+                        empty_strings_with_nulls(strings)
                     }
                 } else {
                     let should_parallelize = !context.parallel()
