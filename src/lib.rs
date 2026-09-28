@@ -106,14 +106,9 @@ pub fn count_r50k(text: &str) -> usize {
         .count(text)
 }
 
-fn resolve_encoding(tokenizer: &str) -> PolarsResult<&'static CoreBpe> {
+fn validate_tokenizer(tokenizer: &str) -> PolarsResult<()> {
     match tokenizer {
-        CL100K_BASE | O200K_BASE | P50K_BASE | R50K_BASE => tiktoken::get_encoding(tokenizer)
-            .ok_or_else(|| {
-                PolarsError::ComputeError(
-                    format!("tokenizer {tokenizer:?} was not compiled into this build").into(),
-                )
-            }),
+        CL100K_BASE | O200K_BASE | P50K_BASE | R50K_BASE => Ok(()),
         _ => Err(PolarsError::ComputeError(
             format!(
                 "unsupported tokenizer {tokenizer:?}; supported tokenizers: {SUPPORTED_TOKENIZERS}"
@@ -121,6 +116,14 @@ fn resolve_encoding(tokenizer: &str) -> PolarsResult<&'static CoreBpe> {
             .into(),
         )),
     }
+}
+
+fn resolve_encoding(tokenizer: &str) -> PolarsResult<&'static CoreBpe> {
+    tiktoken::get_encoding(tokenizer).ok_or_else(|| {
+        PolarsError::ComputeError(
+            format!("tokenizer {tokenizer:?} was not compiled into this build").into(),
+        )
+    })
 }
 
 fn checked_count(text: &str, encoding: &CoreBpe) -> PolarsResult<u32> {
@@ -663,9 +666,58 @@ fn count_binary_parallel(
     ))
 }
 
+fn count_string_input(
+    strings: &StringChunked,
+    tokenizer: &str,
+    cache_capacity: Option<usize>,
+    allow_parallel: bool,
+) -> PolarsResult<UInt32Chunked> {
+    let null_count = strings.null_count();
+    if null_count == strings.len() {
+        // A null StringView may still reference non-empty bytes from an
+        // earlier value. Check validity before physical byte size.
+        return Ok(UInt32Chunked::full_null(
+            strings.name().clone(),
+            strings.len(),
+        ));
+    }
+
+    let physical_bytes = strings.get_values_size();
+    // Null StringViews may retain earlier byte lengths. When nearly every
+    // row is null, sum only valid view lengths so those dead bytes do not
+    // trigger or skew parallel work.
+    let total_bytes = if physical_bytes >= PARALLEL_MIN_BYTES
+        && null_count >= strings.len() - strings.len() / 8
+    {
+        strings
+            .downcast_iter()
+            .flat_map(|chunk| chunk.non_null_views_iter())
+            .map(|view| view.length as usize)
+            .sum()
+    } else {
+        physical_bytes
+    };
+    if total_bytes == 0 {
+        // Every non-null value is empty. Mixed empty/null input still needs
+        // its validity copied to the output.
+        return Ok(if null_count == 0 {
+            UInt32Chunked::full(strings.name().clone(), 0, strings.len())
+        } else {
+            empty_strings_with_nulls(strings)
+        });
+    }
+
+    let encoding = resolve_encoding(tokenizer)?;
+    if allow_parallel && total_bytes >= PARALLEL_MIN_BYTES {
+        count_parallel(strings, total_bytes, encoding, cache_capacity)
+    } else {
+        count_chunk_with_cache(strings, encoding, cache_capacity)
+    }
+}
+
 fn count_binary_input(
     binary: &BinaryChunked,
-    encoding: &CoreBpe,
+    tokenizer: &str,
     cache_capacity: Option<usize>,
     allow_parallel: bool,
 ) -> PolarsResult<UInt32Chunked> {
@@ -699,6 +751,7 @@ fn count_binary_input(
         });
     }
 
+    let encoding = resolve_encoding(tokenizer)?;
     if allow_parallel && total_bytes >= PARALLEL_MIN_BYTES {
         count_binary_parallel(binary, total_bytes, encoding, cache_capacity)
     } else {
@@ -713,7 +766,9 @@ fn token_count(
     context: CallerContext,
     kwargs: CountKwargs,
 ) -> PolarsResult<Series> {
-    let encoding = resolve_encoding(&kwargs.tokenizer)?;
+    // Keep invalid tokenizer errors ahead of constant-input fast paths while
+    // deferring vocabulary initialization until there is text to tokenize.
+    validate_tokenizer(&kwargs.tokenizer)?;
     if let Some(capacity) = kwargs.cache_capacity {
         if !(1..=MAX_CACHE_CAPACITY).contains(&capacity) {
             return Err(PolarsError::ComputeError(
@@ -723,55 +778,19 @@ fn token_count(
     }
 
     let input = &inputs[0];
+    let allow_parallel = !context.parallel() && THREAD_POOL.current_num_threads() > 1;
     let output = match input.dtype() {
-        DataType::String => {
-            let strings = input.str()?;
-            let null_count = strings.null_count();
-            if null_count == strings.len() {
-                // A null StringView may still reference non-empty bytes from
-                // an earlier value. Check validity before physical byte size.
-                UInt32Chunked::full_null(strings.name().clone(), strings.len())
-            } else {
-                let physical_bytes = strings.get_values_size();
-                // Null StringViews may retain earlier byte lengths. When
-                // nearly every row is null, sum only valid view lengths so
-                // those dead bytes do not trigger or skew parallel work.
-                let total_bytes = if physical_bytes >= PARALLEL_MIN_BYTES
-                    && null_count >= strings.len() - strings.len() / 8
-                {
-                    strings
-                        .downcast_iter()
-                        .flat_map(|chunk| chunk.non_null_views_iter())
-                        .map(|view| view.length as usize)
-                        .sum()
-                } else {
-                    physical_bytes
-                };
-                if total_bytes == 0 {
-                    // Every non-null value is empty. Mixed empty/null input
-                    // still needs its validity copied to the output.
-                    if null_count == 0 {
-                        UInt32Chunked::full(strings.name().clone(), 0, strings.len())
-                    } else {
-                        empty_strings_with_nulls(strings)
-                    }
-                } else {
-                    let should_parallelize = !context.parallel()
-                        && THREAD_POOL.current_num_threads() > 1
-                        && total_bytes >= PARALLEL_MIN_BYTES;
-                    if should_parallelize {
-                        count_parallel(strings, total_bytes, encoding, kwargs.cache_capacity)?
-                    } else {
-                        count_chunk_with_cache(strings, encoding, kwargs.cache_capacity)?
-                    }
-                }
-            }
-        }
+        DataType::String => count_string_input(
+            input.str()?,
+            &kwargs.tokenizer,
+            kwargs.cache_capacity,
+            allow_parallel,
+        )?,
         DataType::Binary => count_binary_input(
             input.binary()?,
-            encoding,
+            &kwargs.tokenizer,
             kwargs.cache_capacity,
-            !context.parallel() && THREAD_POOL.current_num_threads() > 1,
+            allow_parallel,
         )?,
         DataType::Categorical(_, _) | DataType::Enum(_, _) => {
             if input.null_count() == input.len() {
@@ -779,12 +798,9 @@ fn token_count(
                 // count lookup needs to be allocated or traversed.
                 UInt32Chunked::full_null(input.name().clone(), input.len())
             } else {
+                let encoding = resolve_encoding(&kwargs.tokenizer)?;
                 with_match_categorical_physical_type!(input.dtype().cat_physical()?, |$C| {
-                    count_categorical(
-                        input.cat::<$C>()?,
-                        encoding,
-                        !context.parallel() && THREAD_POOL.current_num_threads() > 1,
-                    )
+                    count_categorical(input.cat::<$C>()?, encoding, allow_parallel)
                 })?
             }
         }
@@ -802,6 +818,14 @@ fn token_count(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tokenizer_validation_does_not_resolve_vocabulary() {
+        for tokenizer in [CL100K_BASE, O200K_BASE, P50K_BASE, R50K_BASE] {
+            assert!(validate_tokenizer(tokenizer).is_ok());
+        }
+        assert!(validate_tokenizer("unsupported").is_err());
+    }
 
     #[test]
     fn known_o200k_counts() {
