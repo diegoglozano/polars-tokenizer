@@ -155,6 +155,31 @@ def test_all_null_string_views_with_retained_bytes(
 
 
 @pytest.mark.parametrize("tokenizer", TOKENIZERS)
+@pytest.mark.parametrize("cache_capacity", [None, 2])
+@pytest.mark.parametrize("valid_text", ["", "hello world 👋🏽 " * 8])
+def test_sparse_valid_string_views_with_retained_null_bytes(
+    tokenizer: Tokenizer, cache_capacity: int | None, valid_text: str
+) -> None:
+    original = pl.Series(
+        "text",
+        [valid_text if index % 1_000 == 0 else "hello world 👋🏽 " * 8 for index in range(16_000)],
+    )
+    values = original.set(pl.Series([index % 1_000 != 0 for index in range(16_000)]), None)
+    assert values.null_count() == 15_984
+    actual = (
+        pl.DataFrame(values)
+        .lazy()
+        .select(tokens.count("text", tokenizer, cache_capacity=cache_capacity))
+        .collect(engine="streaming")
+        .to_series()
+    )
+    expected_count = reference_count(valid_text, tokenizer)
+    assert actual.to_list() == [
+        expected_count if index % 1_000 == 0 else None for index in range(16_000)
+    ]
+
+
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
 def test_non_null_multichunk_slice(tokenizer: Tokenizer) -> None:
     first = pl.Series("text", ["", "hello world", "你好，世界"])
     second = pl.Series("text", ["👋🏽", "line one\nline two", "<|endoftext|>"])

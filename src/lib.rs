@@ -232,7 +232,7 @@ fn count_chunk_with_cache(
 }
 
 fn empty_strings_with_nulls(strings: &StringChunked) -> UInt32Chunked {
-    // The physical byte size is zero, so every valid string is empty. Reuse
+    // The valid byte size is zero, so every valid string is empty. Reuse
     // each input chunk's null bitmap rather than visiting or tokenizing rows.
     let arrays = strings.downcast_iter().map(|chunk| {
         PrimitiveArray::<u32>::from_vec(vec![0; chunk.len()])
@@ -518,7 +518,21 @@ fn token_count(
                 // an earlier value. Check validity before physical byte size.
                 UInt32Chunked::full_null(strings.name().clone(), strings.len())
             } else {
-                let total_bytes = strings.get_values_size();
+                let physical_bytes = strings.get_values_size();
+                // Null StringViews may retain earlier byte lengths. When
+                // nearly every row is null, sum only valid view lengths so
+                // those dead bytes do not trigger or skew parallel work.
+                let total_bytes = if physical_bytes >= PARALLEL_MIN_BYTES
+                    && null_count >= strings.len() - strings.len() / 8
+                {
+                    strings
+                        .downcast_iter()
+                        .flat_map(|chunk| chunk.non_null_views_iter())
+                        .map(|view| view.length as usize)
+                        .sum()
+                } else {
+                    physical_bytes
+                };
                 if total_bytes == 0 {
                     // Every non-null value is empty. Mixed empty/null input
                     // still needs its validity copied to the output.
