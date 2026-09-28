@@ -127,6 +127,9 @@ fn resolve_encoding(tokenizer: &str) -> PolarsResult<&'static CoreBpe> {
 }
 
 fn checked_count(text: &str, encoding: &CoreBpe) -> PolarsResult<u32> {
+    if text.is_empty() {
+        return Ok(0);
+    }
     u32::try_from(encoding.count(text)).map_err(|_| {
         PolarsError::ComputeError("token count exceeds the UInt32 output range".into())
     })
@@ -167,6 +170,9 @@ fn cached_count<'a>(
     counts: &mut PlHashMap<&'a str, u32>,
     order: &mut VecDeque<&'a str>,
 ) -> PolarsResult<u32> {
+    if text.is_empty() {
+        return Ok(0);
+    }
     if let Some(&count) = counts.get(text) {
         return Ok(count);
     }
@@ -248,6 +254,9 @@ fn cached_binary_count<'a>(
     counts: &mut PlHashMap<&'a [u8], u32>,
     order: &mut VecDeque<&'a [u8]>,
 ) -> PolarsResult<u32> {
+    if bytes.is_empty() {
+        return Ok(0);
+    }
     // A hit has already passed strict UTF-8 validation. Invalid bytes are
     // never inserted, so only misses need to be decoded.
     if let Some(&count) = counts.get(bytes) {

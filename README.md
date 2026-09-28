@@ -129,7 +129,8 @@ The same `cache_capacity` option is available on `estimate_cost()` and
 - Nulls are appended directly to a pre-sized `UInt32` output builder.
 - All-empty text and all-null String, Binary, Categorical, or Enum batches
   produce constant output directly, without loading a vocabulary or doing
-  per-row tokenizer work.
+  per-row tokenizer work. Empty values inside mixed batches also return zero
+  before entering the tokenizer or optional cache.
 - The function is registered as elementwise and uses Polars' own thread pool
   for byte-balanced work above 512 KiB. It stays sequential when the caller is
   already parallel, preventing nested oversubscription.

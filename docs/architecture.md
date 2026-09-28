@@ -25,7 +25,8 @@ The count-only tokenizer pre-tokenizes text and computes the number of surviving
 BPE parts. It does not collect token IDs. A static vocabulary is initialized
 only when nonempty text needs counting, then shared immutably across Polars
 worker threads. All-null and all-empty batches return constant results without
-paying that cold-start cost.
+paying that cold-start cost. Empty values in otherwise nonempty batches return
+zero before pre-tokenization or cache lookup.
 
 ## Parallelism boundary
 
