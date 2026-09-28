@@ -9,6 +9,7 @@ pub mod sentencepiece_bpe;
 
 use std::collections::{HashMap, VecDeque};
 
+use polars::polars_utils::aliases::PlHashMap;
 use polars::prelude::*;
 use pyo3_polars::PolarsAllocator;
 use pyo3_polars::derive::{CallerContext, polars_expr};
@@ -160,7 +161,7 @@ fn cached_count<'a>(
     text: &'a str,
     encoding: &CoreBpe,
     capacity: usize,
-    counts: &mut HashMap<&'a str, u32>,
+    counts: &mut PlHashMap<&'a str, u32>,
     order: &mut VecDeque<&'a str>,
 ) -> PolarsResult<u32> {
     if let Some(&count) = counts.get(text) {
@@ -188,7 +189,7 @@ fn count_chunk_cached(
         PrimitiveChunkedBuilder::<UInt32Type>::new(strings.name().clone(), strings.len());
     // Borrow keys from the input buffers; the cache never copies string data.
     // FIFO eviction bounds both tables to `capacity` entries per task.
-    let mut counts: HashMap<&str, u32> = HashMap::new();
+    let mut counts: PlHashMap<&str, u32> = PlHashMap::default();
     let mut order: VecDeque<&str> = VecDeque::new();
 
     if strings.null_count() == 0 {
