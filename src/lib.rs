@@ -275,14 +275,7 @@ fn count_categorical_dense<T: PolarsCategoricalType>(
     let mapping_len = mapping.num_cats_upper_bound();
     let mut counts = vec![0_u32; mapping_len];
     let mut seen = vec![false; mapping_len];
-    let mut output =
-        PrimitiveChunkedBuilder::<UInt32Type>::new(physical.name().clone(), physical.len());
-
-    for value in physical {
-        let Some(category) = value else {
-            output.append_null();
-            continue;
-        };
+    let mut count_category = |category: T::Native| -> PolarsResult<u32> {
         let category = category.as_cat();
         let index = category as usize;
         if index >= mapping_len {
@@ -297,7 +290,24 @@ fn count_categorical_dense<T: PolarsCategoricalType>(
             counts[index] = checked_count(text, encoding)?;
             seen[index] = true;
         }
-        output.append_value(counts[index]);
+        Ok(counts[index])
+    };
+
+    if physical.null_count() == 0 {
+        let mut values = Vec::with_capacity(physical.len());
+        for category in physical.into_no_null_iter() {
+            values.push(count_category(category)?);
+        }
+        return Ok(UInt32Chunked::from_vec(physical.name().clone(), values));
+    }
+
+    let mut output =
+        PrimitiveChunkedBuilder::<UInt32Type>::new(physical.name().clone(), physical.len());
+    for value in physical {
+        match value {
+            None => output.append_null(),
+            Some(category) => output.append_value(count_category(category)?),
+        }
     }
 
     Ok(output.finish())
