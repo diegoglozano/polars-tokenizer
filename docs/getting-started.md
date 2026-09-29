@@ -2,8 +2,7 @@
 
 ## Install
 
-After the first PyPI release, install the prebuilt wheel for a supported
-platform and CPython 3.10–3.14:
+Install the prebuilt wheel for a supported platform and CPython 3.10–3.14:
 
 ```bash
 python -m pip install polars-tokenizer
