@@ -5,6 +5,8 @@ edition = "2024"
 rust-version = "1.87"
 license = "MIT"
 description = "Count-only token analytics expressions for Polars"
+homepage = "https://diegoglozano.github.io/polars-tokenizer/"
+repository = "https://github.com/diegoglozano/polars-tokenizer"
 
 [lib]
 name = "polars_tokenizer"

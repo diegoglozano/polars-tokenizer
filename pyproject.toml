@@ -7,17 +7,27 @@ name = "polars-tokenizer"
 version = "0.1.0"
 description = "High-performance token analytics for Polars"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.15"
 license = "MIT"
 authors = [{ name = "polars-tokenizer contributors" }]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Rust",
   "Typing :: Typed",
 ]
 dependencies = ["polars==1.36.1"]
+
+[project.urls]
+Documentation = "https://diegoglozano.github.io/polars-tokenizer/"
+Repository = "https://github.com/diegoglozano/polars-tokenizer"
+Issues = "https://github.com/diegoglozano/polars-tokenizer/issues"
 
 [dependency-groups]
 dev = [

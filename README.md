@@ -3,6 +3,9 @@
 Read the [documentation](https://diegoglozano.github.io/polars-tokenizer/)
 for installation, examples, API options, and implementation notes.
 
+After the first PyPI release, install with `python -m pip install polars-tokenizer`.
+Until then, use the [source installation steps](docs/getting-started.md#install-from-this-repository).
+
 `polars-tokenizer` is a native Polars expression plugin for exact, count-only
 tokenization of String, UTF-8 Binary, Categorical, and Enum columns. It exposes
 exact counts and model-based raw-text cost estimates. Exact counting supports
@@ -169,6 +172,9 @@ uv run --group docs mkdocs serve
 The Python and Rust Polars versions are intentionally coupled because native
 expression plugins use Polars' plugin ABI. When upgrading Polars, update
 `polars`, `pyo3-polars`, and the Python dependency together.
+
+Maintainers: see the [release guide](docs/releasing.md) for wheel validation,
+trusted publishing, and versioning.
 
 ## Benchmarks
 

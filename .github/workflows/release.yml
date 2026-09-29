@@ -1,0 +1,196 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Check release version and source
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+
+          with open("pyproject.toml", "rb") as file:
+              python_version = tomllib.load(file)["project"]["version"]
+          with open("Cargo.toml", "rb") as file:
+              rust_version = tomllib.load(file)["package"]["version"]
+          if python_version != rust_version:
+              raise SystemExit(f"Version mismatch: Python {python_version}, Rust {rust_version}")
+          if os.environ["GITHUB_EVENT_NAME"] == "release":
+              expected_tag = f"v{python_version}"
+              if os.environ["GITHUB_REF_NAME"] != expected_tag:
+                  raise SystemExit(f"Release tag must be {expected_tag}")
+          print(f"Validated polars-tokenizer {python_version}")
+          PY
+          if [[ "$GITHUB_EVENT_NAME" == release ]]; then
+            git fetch origin main
+            git merge-base --is-ancestor HEAD origin/main || {
+              echo "Release commit must be on main" >&2
+              exit 1
+            }
+          fi
+
+  linux-wheels:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Build CPython wheels
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
+        with:
+          maturin-version: v1.15.0
+          target: ${{ matrix.target }}
+          manylinux: "2_28"
+          args: >-
+            --release --locked --compatibility pypi
+            -i python3.10 python3.11 python3.12 python3.13 python3.14
+            --out dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: distributions-${{ matrix.target }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  host-wheels:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        id: py310
+        with:
+          python-version: "3.10"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        id: py311
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        id: py312
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        id: py313
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        id: py314
+        with:
+          python-version: "3.14"
+      - name: Build CPython wheels
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
+        with:
+          maturin-version: v1.15.0
+          target: ${{ matrix.target }}
+          args: >-
+            --release --locked --compatibility pypi
+            -i ${{ steps.py310.outputs.python-path }}
+            ${{ steps.py311.outputs.python-path }}
+            ${{ steps.py312.outputs.python-path }}
+            ${{ steps.py313.outputs.python-path }}
+            ${{ steps.py314.outputs.python-path }}
+            --out dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: distributions-${{ matrix.target }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  sdist:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Build source distribution
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
+        with:
+          maturin-version: v1.15.0
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: distributions-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  smoke-test-wheels:
+    needs: [linux-wheels, host-wheels]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-15
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: distributions-${{ matrix.target }}
+          path: dist
+      - name: Install and exercise the CPython 3.12 wheel
+        shell: bash
+        run: |
+          python -m pip install dist/*cp312*.whl
+          python -c 'import polars as pl; import polars_tokenizer as t; assert pl.DataFrame({"text": ["hello world", None, ""]}).select(t.count("text"))["text"].to_list() == [2, None, 0]'
+
+  publish:
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    needs: [linux-wheels, host-wheels, sdist, smoke-test-wheels]
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: pypi-publish
+      cancel-in-progress: false
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: distributions-*
+          path: dist
+          merge-multiple: true
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
