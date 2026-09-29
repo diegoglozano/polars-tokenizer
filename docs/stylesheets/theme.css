@@ -1,0 +1,23 @@
+/* Dark, blue-accented documentation inspired by Polars' Material layout. */
+[data-md-color-scheme="slate"] {
+  --md-hue: 215;
+  --md-primary-fg-color: #102a4d;
+  --md-primary-fg-color--light: #214875;
+  --md-primary-fg-color--dark: #091b34;
+  --md-accent-fg-color: #66aaff;
+  --md-typeset-a-color: #80baff;
+  --md-default-bg-color: #0e1726;
+  --md-code-bg-color: #142238;
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #0069e6;
+  --md-primary-fg-color--light: #4c9dff;
+  --md-primary-fg-color--dark: #0058bf;
+  --md-accent-fg-color: #005fce;
+  --md-typeset-a-color: #005fce;
+}
+
+.md-grid {
+  max-width: 80rem;
+}
