@@ -1,5 +1,8 @@
 # polars-tokenizer
 
+Read the [documentation](https://diegoglozano.github.io/polars-tokenizer/)
+for installation, examples, API options, and implementation notes.
+
 `polars-tokenizer` is a native Polars expression plugin for exact, count-only
 tokenization of String, UTF-8 Binary, Categorical, and Enum columns. It exposes
 exact counts and model-based raw-text cost estimates. Exact counting supports
@@ -155,6 +158,12 @@ uv run --no-sync ruff format --check .
 uv run --no-sync ty check
 cargo test --all-targets
 cargo clippy --all-targets -- -D warnings
+```
+
+Preview the MkDocs site locally:
+
+```bash
+uv run --group docs mkdocs serve
 ```
 
 The Python and Rust Polars versions are intentionally coupled because native
