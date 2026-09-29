@@ -1412,6 +1412,7 @@ dependencies = [
  "criterion",
  "polars",
  "polars-core",
+ "pyo3",
  "pyo3-polars",
  "rayon",
  "rustc-hash",

@@ -3,8 +3,9 @@
 Read the [documentation](https://diegoglozano.github.io/polars-tokenizer/)
 for installation, examples, API options, and implementation notes.
 
-After the first PyPI release, install with `python -m pip install polars-tokenizer`.
-Until then, use the [source installation steps](docs/getting-started.md#install-from-this-repository).
+Install from PyPI with `python -m pip install polars-tokenizer`.
+See the [source installation steps](docs/getting-started.md#install-from-this-repository)
+if you are developing the package or need to build for an unsupported platform.
 
 `polars-tokenizer` is a native Polars expression plugin for exact, count-only
 tokenization of String, UTF-8 Binary, Categorical, and Enum columns. It exposes

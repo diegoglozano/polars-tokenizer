@@ -1,15 +1,17 @@
 # Releasing to PyPI
 
-Releases publish prebuilt CPython 3.10–3.14 wheels for Linux x86-64 and arm64,
-macOS Apple Silicon and Intel, and Windows x86-64, plus a source distribution.
+Releases publish one Python 3.10+ `abi3` wheel per platform for Linux x86-64
+and arm64, macOS Apple Silicon and Intel, and Windows x86-64, plus a source
+distribution. The package metadata currently limits installation to CPython
+3.10–3.14. Each platform's wheel is smoke-tested on Python 3.10, 3.12, and
+3.14 before publication.
 The [release workflow](https://github.com/diegoglozano/polars-tokenizer/blob/main/.github/workflows/release.yml)
 builds distributions on the five corresponding GitHub runners.
 
-## First-release setup
+## Trusted-publisher setup
 
-The first publication creates the `polars-tokenizer` project on PyPI. In the
-PyPI account that should own it, open **Publishing** and add a **pending trusted
-publisher** with these exact values:
+The `polars-tokenizer` PyPI project was created by the v0.1.0 release. Its
+trusted publisher is already configured with these values:
 
 | Field | Value |
 | --- | --- |
@@ -22,8 +24,9 @@ publisher** with these exact values:
 The GitHub repository has a `pypi` environment restricted to `v*` tags.
 Configure required reviewers there if releases should need an explicit approval. Trusted
 publishing uses a short-lived GitHub OIDC identity; do not add a long-lived
-PyPI token to repository secrets. A pending publisher does **not** reserve the
-project name until the first upload succeeds.
+PyPI token to repository secrets. When setting up a new project or fork, a
+pending publisher does **not** reserve the project name until the first upload
+succeeds.
 
 ## Preflight
 
@@ -40,8 +43,8 @@ project name until the first upload succeeds.
 
 3. Merge the release changes to `main`. Use **Run workflow** on the GitHub
    **Release** workflow to build the cross-platform artifacts without uploading
-   anything. Check that all wheel, source-distribution, and wheel smoke-test
-   jobs succeed.
+   anything. Check that all five `abi3` wheels, the source distribution, and
+   cross-version wheel smoke-test jobs succeed.
 4. Create and publish a GitHub Release tagged `vX.Y.Z` on the verified `main`
    commit. The tag must match the Python and Rust package versions. Publishing
    the GitHub Release triggers the same builds, then the isolated `pypi`
