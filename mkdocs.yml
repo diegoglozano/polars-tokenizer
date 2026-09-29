@@ -1,0 +1,23 @@
+site_name: polars-tokenizer
+site_description: Exact count-only token analytics for Polars
+site_url: https://diegoglozano.github.io/polars-tokenizer/
+repo_url: https://github.com/diegoglozano/polars-tokenizer
+repo_name: diegoglozano/polars-tokenizer
+edit_uri: edit/main/docs/
+theme:
+  name: mkdocs
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - API reference: api.md
+  - Binary input: binary-input.md
+  - Provider support: provider-support.md
+  - Internals:
+      - Architecture: architecture.md
+      - Performance: performance.md
+      - Benchmarking: benchmarking.md
+      - Gemma 3 prototype: gemma3-prototype.md
+      - Roadmap: roadmap.md
+markdown_extensions:
+  - toc:
+      permalink: true
