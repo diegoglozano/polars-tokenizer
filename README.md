@@ -20,6 +20,35 @@ df = pl.DataFrame({"text": ["hello world", None, ""]})
 out = df.with_columns(pl.col("text").tokens.count("o200k_base").alias("token_count"))
 ```
 
+## Measured performance
+
+On a four-core Intel N95, counting 100,000 distinct, roughly 128-byte String
+values took **27.4 ms** after the first call: **3.65 million rows/s** or
+**445 MiB/s** of input text (**132 million counted tokens/s**). Results for
+other input shapes:
+
+| Input | First call | Warm median | Rows/s | Input MiB/s | Counted tokens/s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1,000 String rows, ~24 bytes each | 58.5 ms | 0.282 ms | 3.55 million | 80.9 | 28.9 million |
+| 100,000 String rows, ~24 bytes each | 73.4 ms | 6.72 ms | 14.9 million | 338 | 129 million |
+| 100,000 String rows, ~128 bytes each | 84.6 ms | 27.4 ms | 3.65 million | 445 | 132 million |
+| 10,000 String rows, ~2 KiB each | 99.9 ms | 39.8 ms | 251,000 | 490 | 138 million |
+| 100,000 Categorical rows, ~128 bytes each, 1% distinct | 132 ms | 6.54 ms | 15.3 million | 1,862 | 544 million |
+
+These are end-to-end `DataFrame.select()` timings for the release build at
+commit `943d8b3`, measured on 2026-09-29 with `o200k_base`, four Polars
+threads, Python 3.14.7, and Polars 1.36.1. The input frame was already built;
+the first call includes tokenizer initialization, while the warm number is the
+median of nine later calls. The deterministic synthetic mixed-text inputs have
+no nulls and are distinct except for the stated Categorical case. MiB/s uses
+logical UTF-8 input bytes, including repeats. Tokens/s counts output tokens
+for every row. On the 100,000-row short String case, a separate Python loop
+using `tiktoken` 0.12.0 and calling `encode()` once per row took 2.50 s. That
+is a scalar Python baseline, not a batch API comparison. Timings vary with
+text, hardware, and thread count. The
+[raw benchmark report](benchmarks/published/2026-09-29-intel-n95.json) records
+every sample, dataset hash, reference count check, and reproduction command.
+
 Provider model aliases are resolved outside the tokenizer kernel:
 
 ```python
