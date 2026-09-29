@@ -1,0 +1,812 @@
+{
+  "build": "maturin develop --release; local Zig 0.16 C linker",
+  "cases": [
+    {
+      "dataset": {
+        "actual_cardinality": 1.0,
+        "bytes": 23870,
+        "content": "mixed",
+        "input_dtype": "string",
+        "length_class": "tiny",
+        "max_row_bytes": 24,
+        "null_rate": 0.0,
+        "null_rows": 0,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 1.0,
+        "requested_null_rate": 0.0,
+        "rows": 1000,
+        "seed": 42,
+        "sha256": "a442d3335fb49315d4baad512156455269c3ae36cbb5d55d54488eda826d9cf5",
+        "target_bytes_per_value": 24,
+        "tokenizer": "o200k_base",
+        "unique_values": 1000
+      },
+      "environment": {
+        "git_commit": "943d8b350e88d01e49baebb9faccd8f86e317e92",
+        "git_dirty": false,
+        "logical_cpus": 4,
+        "machine": "x86_64",
+        "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39",
+        "polars": "1.36.1",
+        "polars_max_threads": "4",
+        "polars_threads": 4,
+        "polars_tokenizer": "0.1.0",
+        "processor": "x86_64",
+        "python": "3.14.7",
+        "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "rustflags": null,
+        "tiktoken": "0.12.0"
+      },
+      "implementation": "isolated",
+      "measurements": {
+        "output_sha256": "662a0227746e0160c5796cacf6f11e98dad75ba5f03cb38b2656275172f8728a",
+        "plugin_cold": {
+          "best_seconds": 0.05853552802000195,
+          "mib_per_second": 0.38889554263247644,
+          "process_cpu_percent": 103.20609558584104,
+          "rows_per_second": 17083.641915014312,
+          "samples": [
+            {
+              "cpu_seconds": 0.06041223299999998,
+              "process_cpu_percent": 103.20609558584104,
+              "wall_seconds": 0.05853552802000195
+            }
+          ],
+          "seconds": 0.05853552802000195,
+          "tokens_per_second": 139248.76524928166
+        },
+        "plugin_peak_rss_bytes": 88764416,
+        "plugin_warm": {
+          "best_seconds": 0.00026141799753531814,
+          "mib_per_second": 80.8511525058754,
+          "process_cpu_percent": 99.46155998027344,
+          "rows_per_second": 3551679.0150817265,
+          "samples": [
+            {
+              "cpu_seconds": 0.00041919300000001214,
+              "process_cpu_percent": 99.16165860453069,
+              "wall_seconds": 0.00042273697908967733
+            },
+            {
+              "cpu_seconds": 0.0003295820000000227,
+              "process_cpu_percent": 99.50246174671624,
+              "wall_seconds": 0.0003312299959361553
+            },
+            {
+              "cpu_seconds": 0.00031519099999999245,
+              "process_cpu_percent": 109.9030578955821,
+              "wall_seconds": 0.0002867900184355676
+            },
+            {
+              "cpu_seconds": 0.0002647349999999882,
+              "process_cpu_percent": 99.48179467943152,
+              "wall_seconds": 0.00026611401699483395
+            },
+            {
+              "cpu_seconds": 0.0002600290000000227,
+              "process_cpu_percent": 99.46866797680684,
+              "wall_seconds": 0.00026141799753531814
+            },
+            {
+              "cpu_seconds": 0.0002814049999999846,
+              "process_cpu_percent": 99.33250477961431,
+              "wall_seconds": 0.0002832959871739149
+            },
+            {
+              "cpu_seconds": 0.0002797890000000025,
+              "process_cpu_percent": 99.37207199507101,
+              "wall_seconds": 0.00028155697509646416
+            },
+            {
+              "cpu_seconds": 0.0002767480000000211,
+              "process_cpu_percent": 99.41196300716457,
+              "wall_seconds": 0.00027838500682264566
+            },
+            {
+              "cpu_seconds": 0.00027838200000002145,
+              "process_cpu_percent": 99.46155998027344,
+              "wall_seconds": 0.00027988903457298875
+            }
+          ],
+          "seconds": 0.00028155697509646416,
+          "tokens_per_second": 28949735.65193115
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 0.007529488997533917,
+          "mib_per_second": 3.023340088560192,
+          "process_cpu_percent": 99.96910816212527,
+          "rows_per_second": 132811.13769175083,
+          "samples": [
+            {
+              "cpu_seconds": 0.007527163000000003,
+              "process_cpu_percent": 99.96910816212527,
+              "wall_seconds": 0.007529488997533917
+            }
+          ],
+          "seconds": 0.007529488997533917,
+          "tokens_per_second": 1082543.583325461
+        },
+        "reference_peak_rss_bytes": 107683840,
+        "tiktoken_initialization_seconds": 0.41447049396811053,
+        "total_tokens": 8151
+      },
+      "schema_version": 6
+    },
+    {
+      "dataset": {
+        "actual_cardinality": 1.0,
+        "bytes": 127646,
+        "content": "mixed",
+        "input_dtype": "string",
+        "length_class": "short",
+        "max_row_bytes": 128,
+        "null_rate": 0.0,
+        "null_rows": 0,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 1.0,
+        "requested_null_rate": 0.0,
+        "rows": 1000,
+        "seed": 42,
+        "sha256": "fb615ae197eecacbe99df54c26bd9e10f01add9c575acd4120ede8c238ea5574",
+        "target_bytes_per_value": 128,
+        "tokenizer": "o200k_base",
+        "unique_values": 1000
+      },
+      "environment": {
+        "git_commit": "943d8b350e88d01e49baebb9faccd8f86e317e92",
+        "git_dirty": false,
+        "logical_cpus": 4,
+        "machine": "x86_64",
+        "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39",
+        "polars": "1.36.1",
+        "polars_max_threads": "4",
+        "polars_threads": 4,
+        "polars_tokenizer": "0.1.0",
+        "processor": "x86_64",
+        "python": "3.14.7",
+        "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "rustflags": null,
+        "tiktoken": "0.12.0"
+      },
+      "implementation": "isolated",
+      "measurements": {
+        "output_sha256": "04d232a02282c00f15a272da455237b8f1134fc5e5d7f0e367be338fcae93c92",
+        "plugin_cold": {
+          "best_seconds": 0.06593646697001532,
+          "mib_per_second": 1.846212231045838,
+          "process_cpu_percent": 102.10593635630514,
+          "rows_per_second": 15166.114381814712,
+          "samples": [
+            {
+              "cpu_seconds": 0.067325047,
+              "process_cpu_percent": 102.10593635630514,
+              "wall_seconds": 0.06593646697001532
+            }
+          ],
+          "seconds": 0.06593646697001532,
+          "tokens_per_second": 539094.7018159857
+        },
+        "plugin_peak_rss_bytes": 88952832,
+        "plugin_warm": {
+          "best_seconds": 0.0007360210292972624,
+          "mib_per_second": 163.7836715354934,
+          "process_cpu_percent": 99.826548722775,
+          "rows_per_second": 1345436.8108989042,
+          "samples": [
+            {
+              "cpu_seconds": 0.0009206949999999992,
+              "process_cpu_percent": 99.73330958992499,
+              "wall_seconds": 0.0009231569711118937
+            },
+            {
+              "cpu_seconds": 0.0007799039999999979,
+              "process_cpu_percent": 99.8145548773811,
+              "wall_seconds": 0.0007813529809936881
+            },
+            {
+              "cpu_seconds": 0.0007500179999999912,
+              "process_cpu_percent": 99.84105599689843,
+              "wall_seconds": 0.0007512120064347982
+            },
+            {
+              "cpu_seconds": 0.000739072999999979,
+              "process_cpu_percent": 99.83465794960445,
+              "wall_seconds": 0.0007402970222756267
+            },
+            {
+              "cpu_seconds": 0.0007395730000000211,
+              "process_cpu_percent": 99.826548722775,
+              "wall_seconds": 0.0007408580277115107
+            },
+            {
+              "cpu_seconds": 0.0007393390000000055,
+              "process_cpu_percent": 99.84065660198645,
+              "wall_seconds": 0.0007405189680866897
+            },
+            {
+              "cpu_seconds": 0.0007349550000000094,
+              "process_cpu_percent": 99.8551632012103,
+              "wall_seconds": 0.0007360210292972624
+            },
+            {
+              "cpu_seconds": 0.000741569999999997,
+              "process_cpu_percent": 99.77355758582964,
+              "wall_seconds": 0.0007432530401274562
+            },
+            {
+              "cpu_seconds": 0.0008225450000000079,
+              "process_cpu_percent": 99.81022501316855,
+              "wall_seconds": 0.0008241089526563883
+            }
+          ],
+          "seconds": 0.0007432530401274562,
+          "tokens_per_second": 47824896.88021245
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 0.025065805995836854,
+          "mib_per_second": 4.856524933298,
+          "process_cpu_percent": 99.98640380509856,
+          "rows_per_second": 39894.98682651931,
+          "samples": [
+            {
+              "cpu_seconds": 0.02506239800000004,
+              "process_cpu_percent": 99.98640380509856,
+              "wall_seconds": 0.025065805995836854
+            }
+          ],
+          "seconds": 0.025065805995836854,
+          "tokens_per_second": 1418107.2017354553
+        },
+        "reference_peak_rss_bytes": 105586688,
+        "tiktoken_initialization_seconds": 0.2836293259751983,
+        "total_tokens": 35546
+      },
+      "schema_version": 6
+    },
+    {
+      "dataset": {
+        "actual_cardinality": 1.0,
+        "bytes": 2385805,
+        "content": "mixed",
+        "input_dtype": "string",
+        "length_class": "tiny",
+        "max_row_bytes": 24,
+        "null_rate": 0.0,
+        "null_rows": 0,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 1.0,
+        "requested_null_rate": 0.0,
+        "rows": 100000,
+        "seed": 42,
+        "sha256": "a389d045ab26524603ca7191526ecbf1ca09a30002d28c572d84cedb6dbb70b0",
+        "target_bytes_per_value": 24,
+        "tokenizer": "o200k_base",
+        "unique_values": 100000
+      },
+      "environment": {
+        "git_commit": "943d8b350e88d01e49baebb9faccd8f86e317e92",
+        "git_dirty": false,
+        "logical_cpus": 4,
+        "machine": "x86_64",
+        "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39",
+        "polars": "1.36.1",
+        "polars_max_threads": "4",
+        "polars_threads": 4,
+        "polars_tokenizer": "0.1.0",
+        "processor": "x86_64",
+        "python": "3.14.7",
+        "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "rustflags": null,
+        "tiktoken": "0.12.0"
+      },
+      "implementation": "isolated",
+      "measurements": {
+        "output_sha256": "e257e86b023803512c63e16ee4167838f188be1803e96d001e634227ad27f069",
+        "plugin_cold": {
+          "best_seconds": 0.07344311801716685,
+          "mib_per_second": 30.98017913566498,
+          "process_cpu_percent": 129.63418162304313,
+          "rows_per_second": 1361597.9645175964,
+          "samples": [
+            {
+              "cpu_seconds": 0.09520738499999998,
+              "process_cpu_percent": 129.63418162304313,
+              "wall_seconds": 0.07344311801716685
+            }
+          ],
+          "seconds": 0.07344311801716685,
+          "tokens_per_second": 11829181.868298814
+        },
+        "plugin_peak_rss_bytes": 113270784,
+        "plugin_warm": {
+          "best_seconds": 0.006197280017659068,
+          "mib_per_second": 338.38542702505424,
+          "process_cpu_percent": 334.5221743267235,
+          "rows_per_second": 14872248.04743989,
+          "samples": [
+            {
+              "cpu_seconds": 0.023076329000000007,
+              "process_cpu_percent": 251.8378898453434,
+              "wall_seconds": 0.009163168026134372
+            },
+            {
+              "cpu_seconds": 0.022493046999999988,
+              "process_cpu_percent": 334.5221743267235,
+              "wall_seconds": 0.006723933038301766
+            },
+            {
+              "cpu_seconds": 0.022312613000000037,
+              "process_cpu_percent": 343.8372433261935,
+              "wall_seconds": 0.006489294988568872
+            },
+            {
+              "cpu_seconds": 0.02213256100000005,
+              "process_cpu_percent": 347.12330292753234,
+              "wall_seconds": 0.0063759940094314516
+            },
+            {
+              "cpu_seconds": 0.022175314000000057,
+              "process_cpu_percent": 344.6407125185565,
+              "wall_seconds": 0.006434328039176762
+            },
+            {
+              "cpu_seconds": 0.02234593600000001,
+              "process_cpu_percent": 319.93471208965076,
+              "wall_seconds": 0.0069845300167799
+            },
+            {
+              "cpu_seconds": 0.02213583600000002,
+              "process_cpu_percent": 296.2851782981834,
+              "wall_seconds": 0.0074711249908432364
+            },
+            {
+              "cpu_seconds": 0.021949716000000064,
+              "process_cpu_percent": 354.1830599465352,
+              "wall_seconds": 0.006197280017659068
+            },
+            {
+              "cpu_seconds": 0.022265175000000026,
+              "process_cpu_percent": 245.86149174409147,
+              "wall_seconds": 0.009055983042344451
+            }
+          ],
+          "seconds": 0.006723933038301766,
+          "tokens_per_second": 129205926.80670448
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 0.7736006850027479,
+          "mib_per_second": 2.9411568481813473,
+          "process_cpu_percent": 99.88427440408165,
+          "rows_per_second": 129265.655962604,
+          "samples": [
+            {
+              "cpu_seconds": 0.7727054310000001,
+              "process_cpu_percent": 99.88427440408165,
+              "wall_seconds": 0.7736006850027479
+            }
+          ],
+          "seconds": 0.7736006850027479,
+          "tokens_per_second": 1123023.824619434
+        },
+        "reference_peak_rss_bytes": 117547008,
+        "tiktoken_initialization_seconds": 0.28281718702055514,
+        "total_tokens": 868772
+      },
+      "schema_version": 6
+    },
+    {
+      "dataset": {
+        "actual_cardinality": 1.0,
+        "bytes": 12797394,
+        "content": "mixed",
+        "input_dtype": "string",
+        "length_class": "short",
+        "max_row_bytes": 128,
+        "null_rate": 0.0,
+        "null_rows": 0,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 1.0,
+        "requested_null_rate": 0.0,
+        "rows": 100000,
+        "seed": 42,
+        "sha256": "00b9d6346ac6e0b7882f5ed50880b4790d49b78a13caa6628f46a44ea0086ea2",
+        "target_bytes_per_value": 128,
+        "tokenizer": "o200k_base",
+        "unique_values": 100000
+      },
+      "environment": {
+        "git_commit": "943d8b350e88d01e49baebb9faccd8f86e317e92",
+        "git_dirty": false,
+        "logical_cpus": 4,
+        "machine": "x86_64",
+        "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39",
+        "polars": "1.36.1",
+        "polars_max_threads": "4",
+        "polars_threads": 4,
+        "polars_tokenizer": "0.1.0",
+        "processor": "x86_64",
+        "python": "3.14.7",
+        "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "rustflags": null,
+        "tiktoken": "0.12.0"
+      },
+      "implementation": "isolated",
+      "measurements": {
+        "output_sha256": "0bd213671baecf296b07d5cf6f6a605e82013b140a526a9d77079ecbb8bc8803",
+        "plugin_cold": {
+          "best_seconds": 0.08464640495367348,
+          "mib_per_second": 144.1826853888352,
+          "process_cpu_percent": 199.87684071473092,
+          "rows_per_second": 1181385.0813242388,
+          "samples": [
+            {
+              "cpu_seconds": 0.16918856000000004,
+              "process_cpu_percent": 199.87684071473092,
+              "wall_seconds": 0.08464640495367348
+            }
+          ],
+          "seconds": 0.08464640495367348,
+          "tokens_per_second": 42624090.20175902
+        },
+        "plugin_peak_rss_bytes": 134262784,
+        "plugin_warm": {
+          "best_seconds": 0.02610056399134919,
+          "mib_per_second": 445.11592893115164,
+          "process_cpu_percent": 359.090777747902,
+          "rows_per_second": 3647132.2231300473,
+          "samples": [
+            {
+              "cpu_seconds": 0.09845839300000003,
+              "process_cpu_percent": 359.090777747902,
+              "wall_seconds": 0.027418803016189486
+            },
+            {
+              "cpu_seconds": 0.09848988200000008,
+              "process_cpu_percent": 346.42232057125904,
+              "wall_seconds": 0.028430582024157047
+            },
+            {
+              "cpu_seconds": 0.09827517699999999,
+              "process_cpu_percent": 357.1085767925932,
+              "wall_seconds": 0.027519691037014127
+            },
+            {
+              "cpu_seconds": 0.09782621999999996,
+              "process_cpu_percent": 368.89282591351275,
+              "wall_seconds": 0.02651887299725786
+            },
+            {
+              "cpu_seconds": 0.09686952500000001,
+              "process_cpu_percent": 334.4231280446876,
+              "wall_seconds": 0.028966156009119004
+            },
+            {
+              "cpu_seconds": 0.09807511600000007,
+              "process_cpu_percent": 371.1136316102442,
+              "wall_seconds": 0.02642724697943777
+            },
+            {
+              "cpu_seconds": 0.09753116500000014,
+              "process_cpu_percent": 369.32525191334076,
+              "wall_seconds": 0.02640793297905475
+            },
+            {
+              "cpu_seconds": 0.098092756,
+              "process_cpu_percent": 375.8261929991705,
+              "wall_seconds": 0.02610056399134919
+            },
+            {
+              "cpu_seconds": 0.09680215399999992,
+              "process_cpu_percent": 317.4967028791112,
+              "wall_seconds": 0.030489184020552784
+            }
+          ],
+          "seconds": 0.027418803016189486,
+          "tokens_per_second": 131587655.29879855
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.4952685569878668,
+          "mib_per_second": 4.891075127185514,
+          "process_cpu_percent": 99.95146189838064,
+          "rows_per_second": 40075.846633804336,
+          "samples": [
+            {
+              "cpu_seconds": 2.494057401,
+              "process_cpu_percent": 99.95146189838064,
+              "wall_seconds": 2.4952685569878668
+            }
+          ],
+          "seconds": 2.4952685569878668,
+          "tokens_per_second": 1445926.9283444684
+        },
+        "reference_peak_rss_bytes": 129191936,
+        "tiktoken_initialization_seconds": 0.3184707379550673,
+        "total_tokens": 3607976
+      },
+      "schema_version": 6
+    },
+    {
+      "dataset": {
+        "actual_cardinality": 1.0,
+        "bytes": 20477957,
+        "content": "mixed",
+        "input_dtype": "string",
+        "length_class": "medium",
+        "max_row_bytes": 2048,
+        "null_rate": 0.0,
+        "null_rows": 0,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 1.0,
+        "requested_null_rate": 0.0,
+        "rows": 10000,
+        "seed": 42,
+        "sha256": "b74ff6c3e61e575467fa8b005824cfad07187a1d273de8ab76efdf3be49e0c5c",
+        "target_bytes_per_value": 2048,
+        "tokenizer": "o200k_base",
+        "unique_values": 10000
+      },
+      "environment": {
+        "git_commit": "943d8b350e88d01e49baebb9faccd8f86e317e92",
+        "git_dirty": false,
+        "logical_cpus": 4,
+        "machine": "x86_64",
+        "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39",
+        "polars": "1.36.1",
+        "polars_max_threads": "4",
+        "polars_threads": 4,
+        "polars_tokenizer": "0.1.0",
+        "processor": "x86_64",
+        "python": "3.14.7",
+        "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "rustflags": null,
+        "tiktoken": "0.12.0"
+      },
+      "implementation": "isolated",
+      "measurements": {
+        "output_sha256": "104c4553bc0b11ee10ac19fec831519e44b8281d55781e606ac4d3196ed90e1c",
+        "plugin_cold": {
+          "best_seconds": 0.09992404404329136,
+          "mib_per_second": 195.44146586892194,
+          "process_cpu_percent": 218.5523135006283,
+          "rows_per_second": 100076.01369363687,
+          "samples": [
+            {
+              "cpu_seconds": 0.21838631000000003,
+              "process_cpu_percent": 218.5523135006283,
+              "wall_seconds": 0.09992404404329136
+            }
+          ],
+          "seconds": 0.09992404404329136,
+          "tokens_per_second": 54815335.51251158
+        },
+        "plugin_peak_rss_bytes": 141127680,
+        "plugin_warm": {
+          "best_seconds": 0.03845942404586822,
+          "mib_per_second": 490.33863101056187,
+          "process_cpu_percent": 364.2468186038815,
+          "rows_per_second": 251078.42562152605,
+          "samples": [
+            {
+              "cpu_seconds": 0.144530687,
+              "process_cpu_percent": 356.4610684909485,
+              "wall_seconds": 0.04054599499795586
+            },
+            {
+              "cpu_seconds": 0.14608957899999997,
+              "process_cpu_percent": 369.37123836449746,
+              "wall_seconds": 0.039550881017930806
+            },
+            {
+              "cpu_seconds": 0.145072926,
+              "process_cpu_percent": 364.2468186038815,
+              "wall_seconds": 0.03982819302473217
+            },
+            {
+              "cpu_seconds": 0.14617523100000007,
+              "process_cpu_percent": 378.4574096672654,
+              "wall_seconds": 0.03862395801115781
+            },
+            {
+              "cpu_seconds": 0.148545779,
+              "process_cpu_percent": 305.9394994080944,
+              "wall_seconds": 0.04855397203937173
+            },
+            {
+              "cpu_seconds": 0.14953096900000018,
+              "process_cpu_percent": 302.5201671694644,
+              "wall_seconds": 0.049428429978433996
+            },
+            {
+              "cpu_seconds": 0.1458880450000002,
+              "process_cpu_percent": 379.3297705810893,
+              "wall_seconds": 0.03845942404586822
+            },
+            {
+              "cpu_seconds": 0.14572575600000004,
+              "process_cpu_percent": 353.0373277900009,
+              "wall_seconds": 0.041277718963101506
+            },
+            {
+              "cpu_seconds": 0.14627355000000009,
+              "process_cpu_percent": 371.07941639262083,
+              "wall_seconds": 0.03941839496837929
+            }
+          ],
+          "seconds": 0.03982819302473217,
+          "tokens_per_second": 137524943.61465782
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 3.4754417089861818,
+          "mib_per_second": 5.619228655993905,
+          "process_cpu_percent": 99.8093154614262,
+          "rows_per_second": 2877.332102605482,
+          "samples": [
+            {
+              "cpu_seconds": 3.468814579,
+              "process_cpu_percent": 99.8093154614262,
+              "wall_seconds": 3.4754417089861818
+            }
+          ],
+          "seconds": 3.4754417089861818,
+          "tokens_per_second": 1576021.2538848189
+        },
+        "reference_peak_rss_bytes": 138334208,
+        "tiktoken_initialization_seconds": 0.2952244100160897,
+        "total_tokens": 5477370
+      },
+      "schema_version": 6
+    },
+    {
+      "dataset": {
+        "actual_cardinality": 0.01,
+        "bytes": 12764600,
+        "content": "mixed",
+        "input_dtype": "categorical",
+        "length_class": "short",
+        "max_row_bytes": 128,
+        "null_rate": 0.0,
+        "null_rows": 0,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 0.01,
+        "requested_null_rate": 0.0,
+        "rows": 100000,
+        "seed": 42,
+        "sha256": "e4550e4f24394a4498ec6b4182583b9fe354d509352427ec2dc03c646a85b994",
+        "target_bytes_per_value": 128,
+        "tokenizer": "o200k_base",
+        "unique_values": 1000
+      },
+      "environment": {
+        "git_commit": "943d8b350e88d01e49baebb9faccd8f86e317e92",
+        "git_dirty": false,
+        "logical_cpus": 4,
+        "machine": "x86_64",
+        "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39",
+        "polars": "1.36.1",
+        "polars_max_threads": "4",
+        "polars_threads": 4,
+        "polars_tokenizer": "0.1.0",
+        "processor": "x86_64",
+        "python": "3.14.7",
+        "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "rustflags": null,
+        "tiktoken": "0.12.0"
+      },
+      "implementation": "isolated",
+      "measurements": {
+        "output_sha256": "c576faf937b4deade398cd08fd6cbdf50987936030591aa5cfad38f70b9e8137",
+        "plugin_cold": {
+          "best_seconds": 0.13194746797671542,
+          "mib_per_second": 92.25846744817733,
+          "process_cpu_percent": 62.57309766229837,
+          "rows_per_second": 757877.3699366999,
+          "samples": [
+            {
+              "cpu_seconds": 0.082563618,
+              "process_cpu_percent": 62.57309766229837,
+              "wall_seconds": 0.13194746797671542
+            }
+          ],
+          "seconds": 0.13194746797671542,
+          "tokens_per_second": 26939508.991769932
+        },
+        "plugin_peak_rss_bytes": 104316928,
+        "plugin_warm": {
+          "best_seconds": 0.006228704005479813,
+          "mib_per_second": 1862.3952950794949,
+          "process_cpu_percent": 99.95924053317175,
+          "rows_per_second": 15299053.702687716,
+          "samples": [
+            {
+              "cpu_seconds": 0.01439417599999998,
+              "process_cpu_percent": 99.9565568398955,
+              "wall_seconds": 0.014400432002730668
+            },
+            {
+              "cpu_seconds": 0.006821700000000042,
+              "process_cpu_percent": 99.96078757457522,
+              "wall_seconds": 0.0068243760033510625
+            },
+            {
+              "cpu_seconds": 0.006600194000000004,
+              "process_cpu_percent": 99.95617206577775,
+              "wall_seconds": 0.006603087997063994
+            },
+            {
+              "cpu_seconds": 0.00653356300000002,
+              "process_cpu_percent": 99.95733120689377,
+              "wall_seconds": 0.006536351982504129
+            },
+            {
+              "cpu_seconds": 0.006422057999999953,
+              "process_cpu_percent": 99.71263336680329,
+              "wall_seconds": 0.006440566037781537
+            },
+            {
+              "cpu_seconds": 0.006226579999999982,
+              "process_cpu_percent": 99.96589972042399,
+              "wall_seconds": 0.006228704005479813
+            },
+            {
+              "cpu_seconds": 0.006248733999999978,
+              "process_cpu_percent": 99.96722032781975,
+              "wall_seconds": 0.006250782986171544
+            },
+            {
+              "cpu_seconds": 0.006295284999999984,
+              "process_cpu_percent": 99.95924053317175,
+              "wall_seconds": 0.006297851970884949
+            },
+            {
+              "cpu_seconds": 0.007670418000000012,
+              "process_cpu_percent": 112.90501795189051,
+              "wall_seconds": 0.0067936909617856145
+            }
+          ],
+          "seconds": 0.006536351982504129,
+          "tokens_per_second": 543820162.9157376
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.4377541140420362,
+          "mib_per_second": 4.993641938322786,
+          "process_cpu_percent": 99.76388734167728,
+          "rows_per_second": 41021.3644698522,
+          "samples": [
+            {
+              "cpu_seconds": 2.431998268,
+              "process_cpu_percent": 99.76388734167728,
+              "wall_seconds": 2.4377541140420362
+            }
+          ],
+          "seconds": 2.4377541140420362,
+          "tokens_per_second": 1458145.421445366
+        },
+        "reference_peak_rss_bytes": 107175936,
+        "tiktoken_initialization_seconds": 0.2835280590225011,
+        "total_tokens": 3554600
+      },
+      "schema_version": 6
+    }
+  ],
+  "commands": [
+    "uv run --no-sync python -m benchmarks.matrix --rows 1000,100000 --lengths tiny,short --cardinalities 1.0 --contents mixed --dtypes string --tokenizers o200k_base --threads 4 --warm-repeats 9",
+    "uv run --no-sync python -m benchmarks.matrix --rows 10000 --lengths medium --cardinalities 1.0 --contents mixed --dtypes string --tokenizers o200k_base --threads 4 --warm-repeats 9",
+    "uv run --no-sync python -m benchmarks.matrix --rows 100000 --lengths short --cardinalities 0.01 --contents mixed --dtypes categorical --tokenizers o200k_base --threads 4 --warm-repeats 9"
+  ],
+  "generated_at": "2026-09-29T23:44:42.657063+00:00",
+  "host_cpu": "Intel N95 (4 physical cores)",
+  "schema_version": 5,
+  "skipped": []
+}
