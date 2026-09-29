@@ -43,6 +43,8 @@ nav:
       - Benchmarking: benchmarking.md
       - Gemma 3 prototype: gemma3-prototype.md
       - Roadmap: roadmap.md
+  - Maintainers:
+      - Releasing: releasing.md
 extra_css:
   - stylesheets/theme.css
 markdown_extensions:

@@ -1,5 +1,17 @@
 # Getting started
 
+## Install
+
+After the first PyPI release, install the prebuilt wheel for a supported
+platform and CPython 3.10–3.14:
+
+```bash
+python -m pip install polars-tokenizer
+```
+
+The package pins the compatible Python Polars version. If no wheel exists for
+your platform, `pip` will try to build the Rust source distribution instead.
+
 ## Install from this repository
 
 The project is currently built as a native Python extension. From a clone,
