@@ -5,19 +5,51 @@ repo_url: https://github.com/diegoglozano/polars-tokenizer
 repo_name: diegoglozano/polars-tokenizer
 edit_uri: edit/main/docs/
 theme:
-  name: mkdocs
+  name: material
+  palette:
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  icon:
+    repo: fontawesome/brands/github
 nav:
   - Home: index.md
-  - Getting started: getting-started.md
-  - API reference: api.md
-  - Binary input: binary-input.md
-  - Provider support: provider-support.md
+  - Guide:
+      - Getting started: getting-started.md
+      - Binary input: binary-input.md
+  - Reference:
+      - API: api.md
+      - Provider support: provider-support.md
   - Internals:
       - Architecture: architecture.md
       - Performance: performance.md
       - Benchmarking: benchmarking.md
       - Gemma 3 prototype: gemma3-prototype.md
       - Roadmap: roadmap.md
+extra_css:
+  - stylesheets/theme.css
 markdown_extensions:
   - toc:
       permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
