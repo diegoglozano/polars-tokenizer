@@ -50,7 +50,8 @@ CONTENT_SAMPLES: Final = {
     ),
 }
 CONTENT_TYPES: Final = ("mixed", *CONTENT_SAMPLES)
-INPUT_DTYPES: Final = ("string", "categorical")
+INPUT_DTYPES: Final = ("string", "binary", "categorical")
+TOKENIZERS: Final = ("o200k_base", "cl100k_base", "p50k_base", "r50k_base")
 OUTLIER_POSITIONS: Final = ("first", "middle", "last")
 OUTLIER_PREFIX: Final = "Oversized benchmark row: "
 OUTLIER_SAMPLE: Final = "The quick brown fox jumps over 13 lazy dogs. 你好👋\n"

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -38,6 +41,39 @@ def test_every_content_type_generates_valid_dataset(content: str) -> None:
     values = make_dataset(10, "tiny", 1.0, 7, content=content)
     assert len(values) == 10
     assert all(isinstance(value, str) for value in values)
+
+
+@pytest.mark.parametrize("tokenizer", ["p50k_base", "r50k_base"])
+def test_runner_checks_binary_counts_against_legacy_reference(tokenizer: str) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "benchmarks.run",
+            "--rows",
+            "53",
+            "--length",
+            "tiny",
+            "--input-dtype",
+            "binary",
+            "--tokenizer",
+            tokenizer,
+            "--null-rate",
+            "0.1",
+            "--warm-repeats",
+            "2",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    report = json.loads(completed.stdout)
+    assert report["dataset"]["input_dtype"] == "binary"
+    assert report["dataset"]["tokenizer"] == tokenizer
+    assert report["dataset"]["null_rows"] == 5
+    assert report["measurements"]["plugin_warm"] is not None
+    assert report["measurements"]["python_tiktoken_scalar"] is not None
+    assert report["measurements"]["total_tokens"] > 0
 
 
 def test_null_statistics_and_digest_are_stable() -> None:

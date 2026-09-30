@@ -16,7 +16,13 @@ from typing import Any, TypeVar
 
 import polars as pl
 
-from benchmarks._data import CONTENT_TYPES, INPUT_DTYPES, LENGTH_BYTES, OUTLIER_POSITIONS
+from benchmarks._data import (
+    CONTENT_TYPES,
+    INPUT_DTYPES,
+    LENGTH_BYTES,
+    OUTLIER_POSITIONS,
+    TOKENIZERS,
+)
 
 T = TypeVar("T")
 
@@ -194,7 +200,7 @@ def main() -> None:
         parser.error(f"unknown content types: {', '.join(unknown)}")
     if unknown := sorted(set(args.dtypes) - set(INPUT_DTYPES)):
         parser.error(f"unknown input dtypes: {', '.join(unknown)}")
-    if unknown := sorted(set(args.tokenizers) - {"o200k_base", "cl100k_base"}):
+    if unknown := sorted(set(args.tokenizers) - set(TOKENIZERS)):
         parser.error(f"unknown tokenizers: {', '.join(unknown)}")
     if any(not 0 < value <= 1 for value in args.cardinalities):
         parser.error("--cardinalities values must be in (0, 1]")

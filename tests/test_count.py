@@ -90,6 +90,38 @@ def test_null_and_empty() -> None:
 
 @pytest.mark.parametrize("tokenizer", TOKENIZERS)
 @pytest.mark.parametrize("cache_capacity", [None, 2])
+@pytest.mark.parametrize("with_nulls", [False, True])
+def test_large_uniform_string_chunks_match_reference(
+    tokenizer: Tokenizer, cache_capacity: int | None, with_nulls: bool
+) -> None:
+    text = "你好 👋🏽 <|endoftext|>"
+    expected_texts = [None if with_nulls and index % 97 == 0 else text for index in range(2_048)]
+    first = pl.Series("text", expected_texts[:1_024])
+    second = pl.Series("text", expected_texts[1_024:])
+    values = first.append(second)
+    assert values.n_chunks() == 2
+    actual = (
+        pl.DataFrame(values)
+        .select(tokens.count("text", tokenizer=tokenizer, cache_capacity=cache_capacity))
+        .to_series()
+        .to_list()
+    )
+    count = reference_count(text, tokenizer)
+    assert actual == [count if value is not None else None for value in expected_texts]
+
+
+def test_large_grouped_string_chunks_match_reference() -> None:
+    first_text = "first group 👋🏽"
+    second_text = "second group 你好"
+    values = pl.Series("text", [first_text] * 1_024).append(
+        pl.Series("text", [second_text] * 1_024)
+    )
+    actual = pl.DataFrame(values).select(tokens.count("text")).to_series().to_list()
+    assert actual == [reference_count(first_text)] * 1_024 + [reference_count(second_text)] * 1_024
+
+
+@pytest.mark.parametrize("tokenizer", TOKENIZERS)
+@pytest.mark.parametrize("cache_capacity", [None, 2])
 def test_zero_byte_string_columns(tokenizer: Tokenizer, cache_capacity: int | None) -> None:
     for values, expected in (
         (["", "", ""], [0, 0, 0]),
@@ -508,6 +540,36 @@ def test_sparse_enum_mapping_uses_only_present_values() -> None:
     frame = pl.DataFrame({"text": pl.Series(values, dtype=pl.Enum(categories))})
     expected = [reference_count(value) if value is not None else None for value in values]
     assert frame.select(tokens.count("text")).to_series().to_list() == expected
+
+
+def test_sparse_categorical_mapping_with_repeated_ids_and_nulls() -> None:
+    source = pl.Series("text", [f"category-{index}: hello world" for index in range(4_096)]).cast(
+        pl.Categorical
+    )
+    indices = [0, 4_095, 17, 0] * 50
+    values = source.gather(indices)
+    nulls = [index % 13 == 0 for index in range(len(indices))]
+    values = values.set(pl.Series(nulls), None)
+    assert len(values.cat.get_categories()) >= 4_096
+    expected = [
+        None if null else reference_count(f"category-{category}: hello world")
+        for category, null in zip(indices, nulls, strict=True)
+    ]
+    assert pl.DataFrame(values).select(tokens.count("text")).to_series().to_list() == expected
+
+
+def test_single_mapped_categorical_and_enum_keep_chunk_nulls() -> None:
+    text = "hello world"
+    for dtype in (pl.Categorical, pl.Enum([text])):
+        for values in ([text, text, text, text], [text, None, text, None]):
+            first = pl.Series("text", values[:2], dtype=dtype)
+            second = pl.Series("text", values[2:], dtype=dtype)
+            series = first.append(second)
+            assert series.n_chunks() == 2
+            expected = [reference_count(value) if value is not None else None for value in values]
+            assert (
+                pl.DataFrame(series).select(tokens.count("text")).to_series().to_list() == expected
+            )
 
 
 def test_unsupported_tokenizer_fails_early() -> None:

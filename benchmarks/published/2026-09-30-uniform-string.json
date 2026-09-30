@@ -1,0 +1,1096 @@
+{
+  "baseline_code": "String kernel from base commit bcb5399",
+  "cases": [
+    {
+      "baseline": {
+        "output_sha256": "4e8759acf70f6d1c667d4dbf503ac2583d5f65a4c211464b7249027660f17ba0",
+        "plugin_cold": {
+          "best_seconds": 0.07010919199092314,
+          "mib_per_second": 174.11456191907638,
+          "process_cpu_percent": 151.1964907735977,
+          "rows_per_second": 1426346.4912410737,
+          "samples": [
+            {
+              "cpu_seconds": 0.10600263800000001,
+              "process_cpu_percent": 151.1964907735977,
+              "wall_seconds": 0.07010919199092314
+            }
+          ],
+          "seconds": 0.07010919199092314,
+          "tokens_per_second": 42790394.73723221
+        },
+        "plugin_peak_rss_bytes": 107642880,
+        "plugin_warm": {
+          "best_seconds": 0.012631097983103245,
+          "mib_per_second": 844.8577013470858,
+          "process_cpu_percent": 339.1397068455714,
+          "rows_per_second": 6921074.289435327,
+          "samples": [
+            {
+              "cpu_seconds": 0.046832366000000014,
+              "process_cpu_percent": 266.7898555944679,
+              "wall_seconds": 0.01755402801791206
+            },
+            {
+              "cpu_seconds": 0.06180665200000002,
+              "process_cpu_percent": 356.1646324768156,
+              "wall_seconds": 0.0173533940105699
+            },
+            {
+              "cpu_seconds": 0.049377275,
+              "process_cpu_percent": 336.9465180392557,
+              "wall_seconds": 0.014654336031526327
+            },
+            {
+              "cpu_seconds": 0.04697578999999996,
+              "process_cpu_percent": 325.1229323949129,
+              "wall_seconds": 0.014448623987846076
+            },
+            {
+              "cpu_seconds": 0.049233733,
+              "process_cpu_percent": 257.91630049508257,
+              "wall_seconds": 0.01908903504954651
+            },
+            {
+              "cpu_seconds": 0.051005595999999986,
+              "process_cpu_percent": 261.8330880091095,
+              "wall_seconds": 0.01948019495466724
+            },
+            {
+              "cpu_seconds": 0.049052723000000076,
+              "process_cpu_percent": 244.29667675505056,
+              "wall_seconds": 0.020079160982277244
+            },
+            {
+              "cpu_seconds": 0.04733973799999991,
+              "process_cpu_percent": 350.22212409378636,
+              "wall_seconds": 0.013517060957383364
+            },
+            {
+              "cpu_seconds": 0.047773135999999994,
+              "process_cpu_percent": 359.7667808549315,
+              "wall_seconds": 0.013278918049763888
+            },
+            {
+              "cpu_seconds": 0.047106117999999975,
+              "process_cpu_percent": 364.7122252965942,
+              "wall_seconds": 0.012915969011373818
+            },
+            {
+              "cpu_seconds": 0.04769427500000001,
+              "process_cpu_percent": 339.1397068455714,
+              "wall_seconds": 0.014063311973586679
+            },
+            {
+              "cpu_seconds": 0.04786716600000007,
+              "process_cpu_percent": 378.93342745332995,
+              "wall_seconds": 0.012632077967282385
+            },
+            {
+              "cpu_seconds": 0.04728776299999993,
+              "process_cpu_percent": 374.3757119393522,
+              "wall_seconds": 0.012631097983103245
+            },
+            {
+              "cpu_seconds": 0.04626669399999994,
+              "process_cpu_percent": 299.3823038395429,
+              "wall_seconds": 0.015454051026608795
+            },
+            {
+              "cpu_seconds": 0.04717744899999987,
+              "process_cpu_percent": 372.42915900521933,
+              "wall_seconds": 0.01266749604837969
+            }
+          ],
+          "seconds": 0.014448623987846076,
+          "tokens_per_second": 207632228.6830598
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.193333230970893,
+          "mib_per_second": 5.565516027218755,
+          "process_cpu_percent": 99.98889708287578,
+          "rows_per_second": 45592.70729497604,
+          "samples": [
+            {
+              "cpu_seconds": 2.1930897070000004,
+              "process_cpu_percent": 99.98889708287578,
+              "wall_seconds": 2.193333230970893
+            }
+          ],
+          "seconds": 2.193333230970893,
+          "tokens_per_second": 1367781.218849281
+        },
+        "reference_peak_rss_bytes": 107950080,
+        "tiktoken_initialization_seconds": 0.2980110779753886,
+        "total_tokens": 3000000
+      },
+      "dataset": {
+        "actual_cardinality": 1e-05,
+        "bytes": 12800000,
+        "content": "mixed",
+        "input_dtype": "string",
+        "length_class": "short",
+        "max_row_bytes": 128,
+        "null_rate": 0.0,
+        "null_rows": 0,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 1e-05,
+        "requested_null_rate": 0.0,
+        "rows": 100000,
+        "seed": 42,
+        "sha256": "30f25d5f29c0679f1b6e064fcc23dd4e340c8aef95fa56f3ebdd2a5cc8a3fdd5",
+        "target_bytes_per_value": 128,
+        "tokenizer": "o200k_base",
+        "unique_values": 1
+      },
+      "optimized": {
+        "output_sha256": "4e8759acf70f6d1c667d4dbf503ac2583d5f65a4c211464b7249027660f17ba0",
+        "plugin_cold": {
+          "best_seconds": 0.0565273140091449,
+          "mib_per_second": 215.9492532764809,
+          "process_cpu_percent": 102.3856006861336,
+          "rows_per_second": 1769056.2828409316,
+          "samples": [
+            {
+              "cpu_seconds": 0.05787582999999996,
+              "process_cpu_percent": 102.3856006861336,
+              "wall_seconds": 0.0565273140091449
+            }
+          ],
+          "seconds": 0.0565273140091449,
+          "tokens_per_second": 53071688.48522795
+        },
+        "plugin_peak_rss_bytes": 105115648,
+        "plugin_warm": {
+          "best_seconds": 0.001478583028074354,
+          "mib_per_second": 7962.7191022379275,
+          "process_cpu_percent": 99.65798450853333,
+          "rows_per_second": 65230594.8855331,
+          "samples": [
+            {
+              "cpu_seconds": 0.0015677239999999926,
+              "process_cpu_percent": 99.57558641801677,
+              "wall_seconds": 0.0015744059928692877
+            },
+            {
+              "cpu_seconds": 0.0015064649999999569,
+              "process_cpu_percent": 99.65798450853333,
+              "wall_seconds": 0.0015116350259631872
+            },
+            {
+              "cpu_seconds": 0.0015047480000000002,
+              "process_cpu_percent": 99.74420076127069,
+              "wall_seconds": 0.0015086070052348077
+            },
+            {
+              "cpu_seconds": 0.0016253810000000368,
+              "process_cpu_percent": 97.13794082043138,
+              "wall_seconds": 0.0016732710064388812
+            },
+            {
+              "cpu_seconds": 0.0014701500000000034,
+              "process_cpu_percent": 90.46470123333818,
+              "wall_seconds": 0.0016251089982688427
+            },
+            {
+              "cpu_seconds": 0.0016362220000000205,
+              "process_cpu_percent": 99.71205579880427,
+              "wall_seconds": 0.0016409470117650926
+            },
+            {
+              "cpu_seconds": 0.0014947879999999691,
+              "process_cpu_percent": 99.61992476604962,
+              "wall_seconds": 0.0015004909946583211
+            },
+            {
+              "cpu_seconds": 0.001506852000000003,
+              "process_cpu_percent": 99.73623898972043,
+              "wall_seconds": 0.0015108369989320636
+            },
+            {
+              "cpu_seconds": 0.0014777069999999948,
+              "process_cpu_percent": 99.62871362626858,
+              "wall_seconds": 0.0014832139713689685
+            },
+            {
+              "cpu_seconds": 0.0015285760000000037,
+              "process_cpu_percent": 99.70992180774888,
+              "wall_seconds": 0.0015330229653045535
+            },
+            {
+              "cpu_seconds": 0.0014802490000000446,
+              "process_cpu_percent": 99.61285369037476,
+              "wall_seconds": 0.0014860020019114017
+            },
+            {
+              "cpu_seconds": 0.0015342160000000327,
+              "process_cpu_percent": 99.7030774366527,
+              "wall_seconds": 0.0015387849998660386
+            },
+            {
+              "cpu_seconds": 0.0014726249999999497,
+              "process_cpu_percent": 99.5970447407229,
+              "wall_seconds": 0.001478583028074354
+            },
+            {
+              "cpu_seconds": 0.0016273500000000274,
+              "process_cpu_percent": 99.73365075468902,
+              "wall_seconds": 0.0016316960100084543
+            },
+            {
+              "cpu_seconds": 0.0017636520000000044,
+              "process_cpu_percent": 99.74081494938827,
+              "wall_seconds": 0.001768235000781715
+            }
+          ],
+          "seconds": 0.0015330229653045535,
+          "tokens_per_second": 1956917846.565993
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.283266131998971,
+          "mib_per_second": 5.346302421309467,
+          "process_cpu_percent": 99.77700803565487,
+          "rows_per_second": 43796.90943536715,
+          "samples": [
+            {
+              "cpu_seconds": 2.278174632,
+              "process_cpu_percent": 99.77700803565487,
+              "wall_seconds": 2.283266131998971
+            }
+          ],
+          "seconds": 2.283266131998971,
+          "tokens_per_second": 1313907.2830610145
+        },
+        "reference_peak_rss_bytes": 108003328,
+        "tiktoken_initialization_seconds": 0.2799129680497572,
+        "total_tokens": 3000000
+      }
+    },
+    {
+      "baseline": {
+        "output_sha256": "0bd213671baecf296b07d5cf6f6a605e82013b140a526a9d77079ecbb8bc8803",
+        "plugin_cold": {
+          "best_seconds": 0.12329907499952242,
+          "mib_per_second": 98.98327278431503,
+          "process_cpu_percent": 152.85742897968214,
+          "rows_per_second": 811036.092528572,
+          "samples": [
+            {
+              "cpu_seconds": 0.18847179600000002,
+              "process_cpu_percent": 152.85742897968214,
+              "wall_seconds": 0.12329907499952242
+            }
+          ],
+          "seconds": 0.12329907499952242,
+          "tokens_per_second": 29261987.56976867
+        },
+        "plugin_peak_rss_bytes": 134164480,
+        "plugin_warm": {
+          "best_seconds": 0.025816321023739874,
+          "mib_per_second": 419.6141076369122,
+          "process_cpu_percent": 334.8532073552653,
+          "rows_per_second": 3438178.7614688026,
+          "samples": [
+            {
+              "cpu_seconds": 0.10158830500000005,
+              "process_cpu_percent": 208.42662655140774,
+              "wall_seconds": 0.04874056001426652
+            },
+            {
+              "cpu_seconds": 0.10253523099999995,
+              "process_cpu_percent": 210.51926032907366,
+              "wall_seconds": 0.048705867026001215
+            },
+            {
+              "cpu_seconds": 0.10653089199999999,
+              "process_cpu_percent": 126.37538793939275,
+              "wall_seconds": 0.08429718296974897
+            },
+            {
+              "cpu_seconds": 0.09694399200000003,
+              "process_cpu_percent": 306.3921567436792,
+              "wall_seconds": 0.03164049400947988
+            },
+            {
+              "cpu_seconds": 0.09676136499999999,
+              "process_cpu_percent": 369.20243788547845,
+              "wall_seconds": 0.02620821399614215
+            },
+            {
+              "cpu_seconds": 0.09652191899999996,
+              "process_cpu_percent": 371.4134999357136,
+              "wall_seconds": 0.02598772500641644
+            },
+            {
+              "cpu_seconds": 0.09668534399999995,
+              "process_cpu_percent": 367.1470743503488,
+              "wall_seconds": 0.026334227004554123
+            },
+            {
+              "cpu_seconds": 0.0967541890000001,
+              "process_cpu_percent": 374.77915195983195,
+              "wall_seconds": 0.025816321023739874
+            },
+            {
+              "cpu_seconds": 0.09800646099999999,
+              "process_cpu_percent": 336.9637326969205,
+              "wall_seconds": 0.029085165995638818
+            },
+            {
+              "cpu_seconds": 0.10116867800000007,
+              "process_cpu_percent": 234.89746106565613,
+              "wall_seconds": 0.04306929395534098
+            },
+            {
+              "cpu_seconds": 0.09921934099999996,
+              "process_cpu_percent": 226.52199563676209,
+              "wall_seconds": 0.04380119498819113
+            },
+            {
+              "cpu_seconds": 0.09811691200000006,
+              "process_cpu_percent": 334.8532073552653,
+              "wall_seconds": 0.02930146997096017
+            },
+            {
+              "cpu_seconds": 0.09659207800000003,
+              "process_cpu_percent": 360.45930418336553,
+              "wall_seconds": 0.026796944031957537
+            },
+            {
+              "cpu_seconds": 0.097321604,
+              "process_cpu_percent": 355.0493096869788,
+              "wall_seconds": 0.027410728973336518
+            },
+            {
+              "cpu_seconds": 0.09592862700000016,
+              "process_cpu_percent": 332.60344303164504,
+              "wall_seconds": 0.028841742023359984
+            }
+          ],
+          "seconds": 0.029085165995638818,
+          "tokens_per_second": 124048664.55089164
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.486992513993755,
+          "mib_per_second": 4.9073513112963445,
+          "process_cpu_percent": 99.92574545426397,
+          "rows_per_second": 40209.208285639055,
+          "samples": [
+            {
+              "cpu_seconds": 2.485145809,
+              "process_cpu_percent": 99.92574545426397,
+              "wall_seconds": 2.486992513993755
+            }
+          ],
+          "seconds": 2.486992513993755,
+          "tokens_per_second": 1450738.5847358685
+        },
+        "reference_peak_rss_bytes": 129073152,
+        "tiktoken_initialization_seconds": 0.3074399409815669,
+        "total_tokens": 3607976
+      },
+      "dataset": {
+        "actual_cardinality": 1.0,
+        "bytes": 12797394,
+        "content": "mixed",
+        "input_dtype": "string",
+        "length_class": "short",
+        "max_row_bytes": 128,
+        "null_rate": 0.0,
+        "null_rows": 0,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 1.0,
+        "requested_null_rate": 0.0,
+        "rows": 100000,
+        "seed": 42,
+        "sha256": "00b9d6346ac6e0b7882f5ed50880b4790d49b78a13caa6628f46a44ea0086ea2",
+        "target_bytes_per_value": 128,
+        "tokenizer": "o200k_base",
+        "unique_values": 100000
+      },
+      "optimized": {
+        "output_sha256": "0bd213671baecf296b07d5cf6f6a605e82013b140a526a9d77079ecbb8bc8803",
+        "plugin_cold": {
+          "best_seconds": 0.08427512197522447,
+          "mib_per_second": 144.8178974848519,
+          "process_cpu_percent": 201.44475619971104,
+          "rows_per_second": 1186589.7984626875,
+          "samples": [
+            {
+              "cpu_seconds": 0.16976781400000002,
+              "process_cpu_percent": 201.44475619971104,
+              "wall_seconds": 0.08427512197522447
+            }
+          ],
+          "seconds": 0.08427512197522447,
+          "tokens_per_second": 42811875.14698213
+        },
+        "plugin_peak_rss_bytes": 134672384,
+        "plugin_warm": {
+          "best_seconds": 0.0261286289896816,
+          "mib_per_second": 429.16770782174075,
+          "process_cpu_percent": 347.48466671451996,
+          "rows_per_second": 3516457.7913041487,
+          "samples": [
+            {
+              "cpu_seconds": 0.09881667500000002,
+              "process_cpu_percent": 347.48466671451996,
+              "wall_seconds": 0.028437708038836718
+            },
+            {
+              "cpu_seconds": 0.09885808200000001,
+              "process_cpu_percent": 378.35158530147083,
+              "wall_seconds": 0.0261286289896816
+            },
+            {
+              "cpu_seconds": 0.09866936400000004,
+              "process_cpu_percent": 349.49919109017964,
+              "wall_seconds": 0.028231643023900688
+            },
+            {
+              "cpu_seconds": 0.09903784300000007,
+              "process_cpu_percent": 297.4044291692898,
+              "wall_seconds": 0.033300729002803564
+            },
+            {
+              "cpu_seconds": 0.09881488099999991,
+              "process_cpu_percent": 372.1062265037859,
+              "wall_seconds": 0.02655555697856471
+            },
+            {
+              "cpu_seconds": 0.09865531000000005,
+              "process_cpu_percent": 363.1053911175678,
+              "wall_seconds": 0.027169883018359542
+            },
+            {
+              "cpu_seconds": 0.09848762499999997,
+              "process_cpu_percent": 368.0180903949043,
+              "wall_seconds": 0.026761626009829342
+            },
+            {
+              "cpu_seconds": 0.09825005899999995,
+              "process_cpu_percent": 334.8862806237498,
+              "wall_seconds": 0.029338335036300123
+            },
+            {
+              "cpu_seconds": 0.10022192399999996,
+              "process_cpu_percent": 323.3225093477823,
+              "wall_seconds": 0.030997509020380676
+            },
+            {
+              "cpu_seconds": 0.10191302000000002,
+              "process_cpu_percent": 239.66668247373337,
+              "wall_seconds": 0.04252281499793753
+            },
+            {
+              "cpu_seconds": 0.10521209600000003,
+              "process_cpu_percent": 184.5831976750516,
+              "wall_seconds": 0.056999823020305485
+            },
+            {
+              "cpu_seconds": 0.10147865400000011,
+              "process_cpu_percent": 264.4047773428442,
+              "wall_seconds": 0.03838003799319267
+            },
+            {
+              "cpu_seconds": 0.09843666900000003,
+              "process_cpu_percent": 373.98837621150045,
+              "wall_seconds": 0.026320783013943583
+            },
+            {
+              "cpu_seconds": 0.09872027399999994,
+              "process_cpu_percent": 372.92998972333226,
+              "wall_seconds": 0.026471529970876873
+            },
+            {
+              "cpu_seconds": 0.10098660199999987,
+              "process_cpu_percent": 301.1754797561169,
+              "wall_seconds": 0.03353081800742075
+            }
+          ],
+          "seconds": 0.028437708038836718,
+          "tokens_per_second": 126872953.16038378
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.7923698280355893,
+          "mib_per_second": 4.370676782207338,
+          "process_cpu_percent": 99.9289540369735,
+          "rows_per_second": 35811.87527382404,
+          "samples": [
+            {
+              "cpu_seconds": 2.7903859619999998,
+              "process_cpu_percent": 99.9289540369735,
+              "wall_seconds": 2.7923698280355893
+            }
+          ],
+          "seconds": 2.7923698280355893,
+          "tokens_per_second": 1292083.8650295055
+        },
+        "reference_peak_rss_bytes": 129191936,
+        "tiktoken_initialization_seconds": 0.3020561530138366,
+        "total_tokens": 3607976
+      }
+    },
+    {
+      "baseline": {
+        "output_sha256": "61def693143906b03f06d04776c5b877258306998e41577a837043aade19f102",
+        "plugin_cold": {
+          "best_seconds": 0.06904100504470989,
+          "mib_per_second": 175.04033913866064,
+          "process_cpu_percent": 151.8071918740568,
+          "rows_per_second": 1448414.6042665737,
+          "samples": [
+            {
+              "cpu_seconds": 0.10480921099999999,
+              "process_cpu_percent": 151.8071918740568,
+              "wall_seconds": 0.06904100504470989
+            }
+          ],
+          "seconds": 0.06904100504470989,
+          "tokens_per_second": 43017913.746717244
+        },
+        "plugin_peak_rss_bytes": 107778048,
+        "plugin_warm": {
+          "best_seconds": 0.012686094967648387,
+          "mib_per_second": 914.3234818991579,
+          "process_cpu_percent": 362.5114017876699,
+          "rows_per_second": 7565795.922947375,
+          "samples": [
+            {
+              "cpu_seconds": 0.047511089000000006,
+              "process_cpu_percent": 343.36031078034836,
+              "wall_seconds": 0.013837094011250883
+            },
+            {
+              "cpu_seconds": 0.04788782399999997,
+              "process_cpu_percent": 372.1397140890648,
+              "wall_seconds": 0.012868237972725183
+            },
+            {
+              "cpu_seconds": 0.047769901999999975,
+              "process_cpu_percent": 367.19451213352966,
+              "wall_seconds": 0.013009426998905838
+            },
+            {
+              "cpu_seconds": 0.04690779900000003,
+              "process_cpu_percent": 347.67061273095254,
+              "wall_seconds": 0.013492022990249097
+            },
+            {
+              "cpu_seconds": 0.046986582000000054,
+              "process_cpu_percent": 366.28131638593555,
+              "wall_seconds": 0.012828004022594541
+            },
+            {
+              "cpu_seconds": 0.04777471499999997,
+              "process_cpu_percent": 361.4537439669725,
+              "wall_seconds": 0.013217380037531257
+            },
+            {
+              "cpu_seconds": 0.048784033000000004,
+              "process_cpu_percent": 362.5114017876699,
+              "wall_seconds": 0.013457241002470255
+            },
+            {
+              "cpu_seconds": 0.04726976699999996,
+              "process_cpu_percent": 372.610855590673,
+              "wall_seconds": 0.012686094967648387
+            },
+            {
+              "cpu_seconds": 0.04821524200000005,
+              "process_cpu_percent": 344.7149738293368,
+              "wall_seconds": 0.013986987993121147
+            },
+            {
+              "cpu_seconds": 0.046945728999999936,
+              "process_cpu_percent": 322.48443023167783,
+              "wall_seconds": 0.014557518006768078
+            },
+            {
+              "cpu_seconds": 0.04691288199999999,
+              "process_cpu_percent": 368.1431424468311,
+              "wall_seconds": 0.012743109022267163
+            },
+            {
+              "cpu_seconds": 0.04755820399999999,
+              "process_cpu_percent": 367.03394976507843,
+              "wall_seconds": 0.012957440048921853
+            },
+            {
+              "cpu_seconds": 0.04799973700000004,
+              "process_cpu_percent": 352.0114344284127,
+              "wall_seconds": 0.013635845971293747
+            },
+            {
+              "cpu_seconds": 0.046988725999999925,
+              "process_cpu_percent": 364.94876215677425,
+              "wall_seconds": 0.012875430984422565
+            },
+            {
+              "cpu_seconds": 0.04731847800000011,
+              "process_cpu_percent": 348.75867244290316,
+              "wall_seconds": 0.01356768497498706
+            }
+          ],
+          "seconds": 0.013217380037531257,
+          "tokens_per_second": 224704138.91153702
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.299377479008399,
+          "mib_per_second": 5.255753371434955,
+          "process_cpu_percent": 99.71968178051483,
+          "rows_per_second": 43490.03193817692,
+          "samples": [
+            {
+              "cpu_seconds": 2.2929319049999997,
+              "process_cpu_percent": 99.71968178051483,
+              "wall_seconds": 2.299377479008399
+            }
+          ],
+          "seconds": 2.299377479008399,
+          "tokens_per_second": 1291653.9485638544
+        },
+        "reference_peak_rss_bytes": 107741184,
+        "tiktoken_initialization_seconds": 0.285580319003202,
+        "total_tokens": 2970000
+      },
+      "dataset": {
+        "actual_cardinality": 1.0101010101010101e-05,
+        "bytes": 12672000,
+        "content": "mixed",
+        "input_dtype": "string",
+        "length_class": "short",
+        "max_row_bytes": 128,
+        "null_rate": 0.01,
+        "null_rows": 1000,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 1e-05,
+        "requested_null_rate": 0.01,
+        "rows": 100000,
+        "seed": 42,
+        "sha256": "db706cd383a34b6bd41eeae1f370ef18f9ec4c1a351276f9d248ad4e3f4d566f",
+        "target_bytes_per_value": 128,
+        "tokenizer": "o200k_base",
+        "unique_values": 1
+      },
+      "optimized": {
+        "output_sha256": "61def693143906b03f06d04776c5b877258306998e41577a837043aade19f102",
+        "plugin_cold": {
+          "best_seconds": 0.055296855978667736,
+          "mib_per_second": 218.54698108265146,
+          "process_cpu_percent": 104.20967156293707,
+          "rows_per_second": 1808421.0798273543,
+          "samples": [
+            {
+              "cpu_seconds": 0.05762467199999999,
+              "process_cpu_percent": 104.20967156293707,
+              "wall_seconds": 0.055296855978667736
+            }
+          ],
+          "seconds": 0.055296855978667736,
+          "tokens_per_second": 53710106.070872426
+        },
+        "plugin_peak_rss_bytes": 105029632,
+        "plugin_warm": {
+          "best_seconds": 0.0015981890028342605,
+          "mib_per_second": 7200.934458532986,
+          "process_cpu_percent": 99.73557975696605,
+          "rows_per_second": 59585914.2265679,
+          "samples": [
+            {
+              "cpu_seconds": 0.0017502770000000223,
+              "process_cpu_percent": 99.69242366104666,
+              "wall_seconds": 0.0017556770471855998
+            },
+            {
+              "cpu_seconds": 0.001998088000000009,
+              "process_cpu_percent": 99.78520678969569,
+              "wall_seconds": 0.0020023889956064522
+            },
+            {
+              "cpu_seconds": 0.0016341159999999633,
+              "process_cpu_percent": 99.7525298037451,
+              "wall_seconds": 0.001638169982470572
+            },
+            {
+              "cpu_seconds": 0.0015921429999999903,
+              "process_cpu_percent": 99.62169663140291,
+              "wall_seconds": 0.0015981890028342605
+            },
+            {
+              "cpu_seconds": 0.0016740399999999878,
+              "process_cpu_percent": 99.749203851843,
+              "wall_seconds": 0.0016782489838078618
+            },
+            {
+              "cpu_seconds": 0.0016438460000000044,
+              "process_cpu_percent": 99.77360733294991,
+              "wall_seconds": 0.0016475759912282228
+            },
+            {
+              "cpu_seconds": 0.0016238170000000274,
+              "process_cpu_percent": 99.66475998812395,
+              "wall_seconds": 0.0016292789950966835
+            },
+            {
+              "cpu_seconds": 0.00161518300000002,
+              "process_cpu_percent": 99.72241176762684,
+              "wall_seconds": 0.001619679038412869
+            },
+            {
+              "cpu_seconds": 0.001687574000000025,
+              "process_cpu_percent": 99.79863740169907,
+              "wall_seconds": 0.0016909789992496371
+            },
+            {
+              "cpu_seconds": 0.0017472580000000293,
+              "process_cpu_percent": 99.71852362809662,
+              "wall_seconds": 0.0017521900008432567
+            },
+            {
+              "cpu_seconds": 0.0016071970000000046,
+              "process_cpu_percent": 99.73557975696605,
+              "wall_seconds": 0.0016114580212160945
+            },
+            {
+              "cpu_seconds": 0.0017678080000000373,
+              "process_cpu_percent": 99.76095437181012,
+              "wall_seconds": 0.0017720439936965704
+            },
+            {
+              "cpu_seconds": 0.0017371330000000018,
+              "process_cpu_percent": 99.78464613667036,
+              "wall_seconds": 0.0017408820567652583
+            },
+            {
+              "cpu_seconds": 0.001677310000000043,
+              "process_cpu_percent": 99.73302411888932,
+              "wall_seconds": 0.0016818000003695488
+            },
+            {
+              "cpu_seconds": 0.0016075389999999912,
+              "process_cpu_percent": 99.69759923486741,
+              "wall_seconds": 0.001612414955161512
+            }
+          ],
+          "seconds": 0.0016782489838078618,
+          "tokens_per_second": 1769701652.5290668
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.2158077610074542,
+          "mib_per_second": 5.4539753629192855,
+          "process_cpu_percent": 99.99104118999188,
+          "rows_per_second": 45130.268861651304,
+          "samples": [
+            {
+              "cpu_seconds": 2.215609251,
+              "process_cpu_percent": 99.99104118999188,
+              "wall_seconds": 2.2158077610074542
+            }
+          ],
+          "seconds": 2.2158077610074542,
+          "tokens_per_second": 1340368.9851910437
+        },
+        "reference_peak_rss_bytes": 108003328,
+        "tiktoken_initialization_seconds": 0.3092162230168469,
+        "total_tokens": 2970000
+      }
+    },
+    {
+      "baseline": {
+        "output_sha256": "84bf7d03f5819ee0ac6506ae9cad96ab2379938f657a2af617ab6baba70c0195",
+        "plugin_cold": {
+          "best_seconds": 0.08313790702959523,
+          "mib_per_second": 145.33052483424143,
+          "process_cpu_percent": 201.4526309164599,
+          "rows_per_second": 1202820.7537676194,
+          "samples": [
+            {
+              "cpu_seconds": 0.16748350100000003,
+              "process_cpu_percent": 201.4526309164599,
+              "wall_seconds": 0.08313790702959523
+            }
+          ],
+          "seconds": 0.08313790702959523,
+          "tokens_per_second": 42963795.067976356
+        },
+        "plugin_peak_rss_bytes": 134619136,
+        "plugin_warm": {
+          "best_seconds": 0.026311800989788026,
+          "mib_per_second": 349.761276257503,
+          "process_cpu_percent": 277.79713538738787,
+          "rows_per_second": 2894781.5500329966,
+          "samples": [
+            {
+              "cpu_seconds": 0.09798237700000001,
+              "process_cpu_percent": 319.86202257335583,
+              "wall_seconds": 0.030632701003924012
+            },
+            {
+              "cpu_seconds": 0.09718148999999998,
+              "process_cpu_percent": 285.24792712076305,
+              "wall_seconds": 0.03406913101207465
+            },
+            {
+              "cpu_seconds": 0.097298997,
+              "process_cpu_percent": 262.9951472250473,
+              "wall_seconds": 0.03699649899499491
+            },
+            {
+              "cpu_seconds": 0.096216105,
+              "process_cpu_percent": 261.51997697856194,
+              "wall_seconds": 0.03679111099336296
+            },
+            {
+              "cpu_seconds": 0.09596480099999993,
+              "process_cpu_percent": 277.79713538738787,
+              "wall_seconds": 0.03454492101445794
+            },
+            {
+              "cpu_seconds": 0.09840131800000007,
+              "process_cpu_percent": 259.06512573146523,
+              "wall_seconds": 0.03798323596129194
+            },
+            {
+              "cpu_seconds": 0.10171584600000005,
+              "process_cpu_percent": 183.18853129893392,
+              "wall_seconds": 0.055525225994642824
+            },
+            {
+              "cpu_seconds": 0.09974953899999983,
+              "process_cpu_percent": 237.45014592461055,
+              "wall_seconds": 0.04200862400466576
+            },
+            {
+              "cpu_seconds": 0.09760344899999995,
+              "process_cpu_percent": 240.61871988158748,
+              "wall_seconds": 0.040563530987128615
+            },
+            {
+              "cpu_seconds": 0.09726589299999988,
+              "process_cpu_percent": 306.59535661734725,
+              "wall_seconds": 0.03172451601130888
+            },
+            {
+              "cpu_seconds": 0.09743939199999985,
+              "process_cpu_percent": 289.4829104935942,
+              "wall_seconds": 0.03365980804665014
+            },
+            {
+              "cpu_seconds": 0.100816515,
+              "process_cpu_percent": 187.08700423724028,
+              "wall_seconds": 0.053887502988800406
+            },
+            {
+              "cpu_seconds": 0.09833369199999997,
+              "process_cpu_percent": 292.2980350216342,
+              "wall_seconds": 0.03364158503245562
+            },
+            {
+              "cpu_seconds": 0.096674272,
+              "process_cpu_percent": 367.4179203374206,
+              "wall_seconds": 0.026311800989788026
+            },
+            {
+              "cpu_seconds": 0.09551228299999992,
+              "process_cpu_percent": 339.36988047141006,
+              "wall_seconds": 0.028144007024820894
+            }
+          ],
+          "seconds": 0.03454492101445794,
+          "tokens_per_second": 103399281.14193861
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.528339929005597,
+          "mib_per_second": 4.7788177228935815,
+          "process_cpu_percent": 99.99028227957886,
+          "rows_per_second": 39551.64369030484,
+          "samples": [
+            {
+              "cpu_seconds": 2.528094232,
+              "process_cpu_percent": 99.99028227957886,
+              "wall_seconds": 2.528339929005597
+            }
+          ],
+          "seconds": 2.528339929005597,
+          "tokens_per_second": 1412753.0713027366
+        },
+        "reference_peak_rss_bytes": 129105920,
+        "tiktoken_initialization_seconds": 0.2804854860296473,
+        "total_tokens": 3571920
+      },
+      "dataset": {
+        "actual_cardinality": 1.0,
+        "bytes": 12669394,
+        "content": "mixed",
+        "input_dtype": "string",
+        "length_class": "short",
+        "max_row_bytes": 128,
+        "null_rate": 0.01,
+        "null_rows": 1000,
+        "outlier_bytes": 0,
+        "outlier_index": null,
+        "outlier_position": null,
+        "requested_cardinality": 1.0,
+        "requested_null_rate": 0.01,
+        "rows": 100000,
+        "seed": 42,
+        "sha256": "3202a5e1d3020cfb6afa1aba54ff5815d053c4a2154ad0bcbd2979cb9c662151",
+        "target_bytes_per_value": 128,
+        "tokenizer": "o200k_base",
+        "unique_values": 99000
+      },
+      "optimized": {
+        "output_sha256": "84bf7d03f5819ee0ac6506ae9cad96ab2379938f657a2af617ab6baba70c0195",
+        "plugin_cold": {
+          "best_seconds": 0.0865716430125758,
+          "mib_per_second": 139.56620484234415,
+          "process_cpu_percent": 199.9079270967053,
+          "rows_per_second": 1155112.6502875027,
+          "samples": [
+            {
+              "cpu_seconds": 0.17306357700000002,
+              "process_cpu_percent": 199.9079270967053,
+              "wall_seconds": 0.0865716430125758
+            }
+          ],
+          "seconds": 0.0865716430125758,
+          "tokens_per_second": 41259699.77814937
+        },
+        "plugin_peak_rss_bytes": 134569984,
+        "plugin_warm": {
+          "best_seconds": 0.026269679015967995,
+          "mib_per_second": 397.8398718107383,
+          "process_cpu_percent": 323.2542742650736,
+          "rows_per_second": 3292701.6195393144,
+          "samples": [
+            {
+              "cpu_seconds": 0.09854259200000004,
+              "process_cpu_percent": 375.1191323658772,
+              "wall_seconds": 0.026269679015967995
+            },
+            {
+              "cpu_seconds": 0.10313035300000006,
+              "process_cpu_percent": 233.3871392622465,
+              "wall_seconds": 0.04418853297829628
+            },
+            {
+              "cpu_seconds": 0.10201218899999998,
+              "process_cpu_percent": 231.93113461836293,
+              "wall_seconds": 0.04398382699582726
+            },
+            {
+              "cpu_seconds": 0.09886357000000001,
+              "process_cpu_percent": 260.5677751802451,
+              "wall_seconds": 0.0379415950155817
+            },
+            {
+              "cpu_seconds": 0.10172421899999995,
+              "process_cpu_percent": 248.61556675118064,
+              "wall_seconds": 0.04091627098387107
+            },
+            {
+              "cpu_seconds": 0.10024804799999987,
+              "process_cpu_percent": 274.1941247595035,
+              "wall_seconds": 0.036560975946485996
+            },
+            {
+              "cpu_seconds": 0.10091668899999995,
+              "process_cpu_percent": 298.95128418714285,
+              "wall_seconds": 0.033756900986190885
+            },
+            {
+              "cpu_seconds": 0.09999614900000009,
+              "process_cpu_percent": 277.00602954874375,
+              "wall_seconds": 0.03609890700317919
+            },
+            {
+              "cpu_seconds": 0.09817296300000011,
+              "process_cpu_percent": 323.2542742650736,
+              "wall_seconds": 0.030370197957381606
+            },
+            {
+              "cpu_seconds": 0.09867296300000006,
+              "process_cpu_percent": 353.10342911388125,
+              "wall_seconds": 0.02794449299108237
+            },
+            {
+              "cpu_seconds": 0.09838007700000007,
+              "process_cpu_percent": 362.62390992025814,
+              "wall_seconds": 0.027130057977046818
+            },
+            {
+              "cpu_seconds": 0.09770344899999994,
+              "process_cpu_percent": 354.26565377683085,
+              "wall_seconds": 0.02757914800895378
+            },
+            {
+              "cpu_seconds": 0.09628425399999996,
+              "process_cpu_percent": 328.1982554010782,
+              "wall_seconds": 0.02933722297893837
+            },
+            {
+              "cpu_seconds": 0.09817691000000006,
+              "process_cpu_percent": 346.5527833864677,
+              "wall_seconds": 0.028329569031484425
+            },
+            {
+              "cpu_seconds": 0.097967264,
+              "process_cpu_percent": 359.0590054675334,
+              "wall_seconds": 0.027284446987323463
+            }
+          ],
+          "seconds": 0.030370197957381606,
+          "tokens_per_second": 117612667.68864869
+        },
+        "python_tiktoken_scalar": {
+          "best_seconds": 2.46427944797324,
+          "mib_per_second": 4.903046069782687,
+          "process_cpu_percent": 99.9846435040656,
+          "rows_per_second": 40579.813333364255,
+          "samples": [
+            {
+              "cpu_seconds": 2.463901021,
+              "process_cpu_percent": 99.9846435040656,
+              "wall_seconds": 2.46427944797324
+            }
+          ],
+          "seconds": 2.46427944797324,
+          "tokens_per_second": 1449478.4684171046
+        },
+        "reference_peak_rss_bytes": 129130496,
+        "tiktoken_initialization_seconds": 0.3182308619725518,
+        "total_tokens": 3571920
+      }
+    }
+  ],
+  "command": "uv run --no-sync python -m benchmarks.matrix --rows 100000 --lengths short --cardinalities 0.00001,1.0 --contents mixed --dtypes string --tokenizers o200k_base --threads 4 --warm-repeats 15",
+  "description": "Isolated end-to-end String benchmark before and after the homogeneous-value fast path",
+  "environment": {
+    "git_commit": "bcb53992397fda393b2e3258f69a38754d5815ae",
+    "git_dirty": true,
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39",
+    "polars": "1.36.1",
+    "polars_max_threads": "4",
+    "polars_threads": 4,
+    "polars_tokenizer": "0.1.0",
+    "processor": "x86_64",
+    "python": "3.14.7",
+    "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "rustflags": null,
+    "tiktoken": "0.12.0"
+  },
+  "generated_at": "2026-09-30T00:26:15.276336+00:00",
+  "host_cpu": "Intel N95 (4 physical cores)",
+  "nullable_command_suffix": "--null-rate 0.01",
+  "optimized_code": "Homogeneous String fast path in this change",
+  "schema_version": 1
+}

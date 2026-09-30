@@ -49,6 +49,14 @@ text, hardware, and thread count. The
 [raw benchmark report](benchmarks/published/2026-09-29-intel-n95.json) records
 every sample, dataset hash, reference count check, and reproduction command.
 
+A 2026-09-30 follow-up on the same host measured 100,000 identical ~128-byte
+String values at **1.53 ms** warm (**65.2 million rows/s**, **7,963 MiB/s** of
+logical input), down from 14.45 ms before the homogeneous-value fast path.
+With 1% nulls, the warm median fell from 13.22 to **1.68 ms**. The distinct-value
+control stayed near 29 ms. These are medians of 15 calls; the [before/after
+report](benchmarks/published/2026-09-30-uniform-string.json) contains the
+samples and reference count checks.
+
 Provider model aliases are resolved outside the tokenizer kernel:
 
 ```python
@@ -159,6 +167,9 @@ The same `cache_capacity` option is available on `estimate_cost()` and
   `Vec<&str>` is materialized.
 - An optional bounded cache reuses counts for repeated ordinary text
   without copying string data; the default path has no cache overhead.
+- Large String columns with one repeated non-null value count it once and
+  build constant output. Columns with few nulls reuse their input validity
+  bitmap.
 - Categorical and enum columns count each used dictionary value once, then map
   counts through their physical IDs without expanding rows to strings. Dense,
   sparse, and parallel paths bound overhead across different mappings.
