@@ -322,11 +322,10 @@ fn empty_binary_with_nulls(binary: &BinaryChunked) -> UInt32Chunked {
     UInt32Chunked::from_chunk_iter(binary.name().clone(), arrays)
 }
 
-fn empty_strings_with_nulls(strings: &StringChunked) -> UInt32Chunked {
-    // The valid byte size is zero, so every valid string is empty. Reuse
-    // each input chunk's null bitmap rather than visiting or tokenizing rows.
+fn constant_strings_with_nulls(strings: &StringChunked, count: u32) -> UInt32Chunked {
+    // Reuse each input chunk's null bitmap rather than rebuilding validity.
     let arrays = strings.downcast_iter().map(|chunk| {
-        PrimitiveArray::<u32>::from_vec(vec![0; chunk.len()])
+        PrimitiveArray::<u32>::from_vec(vec![count; chunk.len()])
             .with_validity(chunk.validity().cloned())
     });
     UInt32Chunked::from_chunk_iter(strings.name().clone(), arrays)
@@ -712,8 +711,42 @@ fn count_string_input(
         return Ok(if null_count == 0 {
             UInt32Chunked::full(strings.name().clone(), 0, strings.len())
         } else {
-            empty_strings_with_nulls(strings)
+            constant_strings_with_nulls(strings, 0)
         });
+    }
+
+    if strings.len() >= 1_024 && null_count <= strings.len() / 8 {
+        if null_count == 0 {
+            let mut values = strings.into_no_null_iter();
+            if let Some(first) = values.next()
+                && values.next().is_some_and(|second| second == first)
+                && strings.get(strings.len() / 2) == Some(first)
+                && strings.get(strings.len() - 1) == Some(first)
+                && values.all(|text| text == first)
+            {
+                let count = checked_count(first, resolve_encoding(tokenizer)?)?;
+                return Ok(UInt32Chunked::full(
+                    strings.name().clone(),
+                    count,
+                    strings.len(),
+                ));
+            }
+        } else {
+            let mut values = strings.into_iter().flatten();
+            if let Some(first) = values.next()
+                && values.next().is_some_and(|second| second == first)
+                && strings
+                    .get(strings.len() / 2)
+                    .is_none_or(|text| text == first)
+                && strings
+                    .get(strings.len() - 1)
+                    .is_none_or(|text| text == first)
+                && values.all(|text| text == first)
+            {
+                let count = checked_count(first, resolve_encoding(tokenizer)?)?;
+                return Ok(constant_strings_with_nulls(strings, count));
+            }
+        }
     }
 
     let encoding = resolve_encoding(tokenizer)?;

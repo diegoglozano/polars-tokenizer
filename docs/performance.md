@@ -2,13 +2,37 @@
 
 These results are directional measurements from a shared 4-vCPU x86_64 Linux
 host, not release claims. They exist to make the optimization decision
-auditable. The corpus contains 100,000 mixed short strings (English prose,
+auditable. Each section states its workload and measurement boundary.
+
+An earlier GigaToken comparison used 100,000 mixed short strings (English prose,
 code, JSON, URLs, Spanish, CJK, and emoji), totaling 13,360,390 logical UTF-8
 bytes. Every GigaToken result was checked row-by-row against the plugin output.
 
-Versions: Polars 1.36.1, GigaToken 0.10.0, and the official `o200k_base` rank
-file with SHA-256
+Its versions were Polars 1.36.1, GigaToken 0.10.0, and the official
+`o200k_base` rank file with SHA-256
 `446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d`.
+
+## Homogeneous String columns
+
+A release build on the shared four-core Intel N95 host counted 100,000
+synthetic mixed-text String rows of roughly 128 bytes each with `o200k_base`
+and four Polars threads. The new path checks whether all non-null values are
+equal before tokenizing, then counts one value and constructs constant output.
+Warm medians below are from 15 `DataFrame.select()` calls on prebuilt inputs;
+MiB/s counts logical input bytes, including repeated values.
+
+| Null rate | Distinct non-null values | Before | After | After MiB/s |
+| ---: | ---: | ---: | ---: | ---: |
+| 0% | 1 | 14.45 ms | 1.53 ms | 7,963 |
+| 0% | 100,000 | 29.09 ms | 28.44 ms | 429 |
+| 1% | 1 | 13.22 ms | 1.68 ms | 7,201 |
+| 1% | 99,000 | 34.55 ms | 30.37 ms | 398 |
+
+The one-value cases improved about 9.4x without nulls and 7.9x with 1% nulls.
+Every case retained the same dataset and per-row output hashes before and
+after, with independent `tiktoken` reference checks. The [raw comparison](https://github.com/diegoglozano/polars-tokenizer/blob/main/benchmarks/published/2026-09-30-uniform-string.json)
+records each sample and the reproduction command. These shared-host results
+show this workload's behavior, not a general speedup for arbitrary text.
 
 ## `cl100k_base` exact-kernel baseline
 

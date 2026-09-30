@@ -51,6 +51,13 @@ over 512 MiB are skipped unless `--max-input-mib` is raised. `--skip-reference`
 is available for profiling very large cases, but release correctness runs must
 retain the reference comparison. The runner verifies both processes generated
 the same dataset and per-row token counts before combining their reports.
+Use `--dtypes string,binary,categorical` to measure UTF-8 Binary columns too;
+`--tokenizers` accepts all four supported encodings, including `p50k_base` and
+`r50k_base`.
+For the homogeneous String path, also compare one distinct value with all
+distinct values at 100,000 rows (`--cardinalities 0.00001,1.0`), both without
+nulls and with `--null-rate 0.01`. The [measured comparison](https://github.com/diegoglozano/polars-tokenizer/blob/main/benchmarks/published/2026-09-30-uniform-string.json)
+retains per-call samples and dataset hashes.
 
 The single-case runner accepts `--tokenizer`; the matrix accepts
 `--tokenizers`. Both default to `o200k_base`, and each case records the selected

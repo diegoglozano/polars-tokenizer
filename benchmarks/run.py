@@ -24,6 +24,7 @@ from benchmarks._data import (
     INPUT_DTYPES,
     LENGTH_BYTES,
     OUTLIER_POSITIONS,
+    TOKENIZERS,
     dataset_digest,
     dataset_statistics,
     inject_oversized_row,
@@ -122,7 +123,7 @@ def main() -> None:
     parser.add_argument("--length", choices=LENGTH_BYTES, default="short")
     parser.add_argument("--content", choices=CONTENT_TYPES, default="mixed")
     parser.add_argument("--input-dtype", choices=INPUT_DTYPES, default="string")
-    parser.add_argument("--tokenizer", choices=("o200k_base", "cl100k_base"), default="o200k_base")
+    parser.add_argument("--tokenizer", choices=TOKENIZERS, default="o200k_base")
     parser.add_argument("--cardinality", type=float, default=1.0)
     parser.add_argument("--null-rate", type=float, default=0.0)
     parser.add_argument("--outlier-bytes", type=int, default=0)
@@ -180,7 +181,14 @@ def main() -> None:
         import polars as pl
         import polars_tokenizer as tokens
 
-        series = pl.Series("text", values)
+        if args.input_dtype == "binary":
+            series = pl.Series(
+                "text",
+                [value.encode() if value is not None else None for value in values],
+                dtype=pl.Binary,
+            )
+        else:
+            series = pl.Series("text", values)
         if args.input_dtype == "categorical":
             series = series.cast(pl.Categorical)
         frame = pl.DataFrame(series)
